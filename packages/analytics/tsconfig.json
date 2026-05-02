@@ -1,0 +1,10 @@
+{
+  "extends": "@amable/config/typescript",
+  "compilerOptions": {
+    "rootDir": "src",
+    "noEmit": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler"
+  },
+  "include": ["src/**/*.ts"]
+}

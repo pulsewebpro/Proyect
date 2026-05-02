@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'cursor/**']
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: amable
+          POSTGRES_PASSWORD: amable
+          POSTGRES_DB: amable
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U amable -d amable"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+    env:
+      DATABASE_URL: postgresql://amable:amable@localhost:5432/amable?schema=public
+      REDIS_URL: redis://localhost:6379
+      AUTH_SECRET: ci-secret-minimum-sixteen-characters
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prisma migrate deploy --schema packages/db/prisma/schema.prisma
+      - run: pnpm db:seed
+      - run: pnpm openapi
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm --filter @amable/web exec playwright install chromium
+      - run: pnpm --filter @amable/web start &
+      - run: pnpm exec wait-on http://127.0.0.1:3000 -t 120000
+      - run: pnpm test:e2e
+      - name: Docker build web
+        run: docker build -f infra/docker/Dockerfile.web -t amable-web:ci .

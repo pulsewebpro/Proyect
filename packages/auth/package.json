@@ -1,0 +1,25 @@
+{
+  "name": "@amable/auth",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./session": "./src/session.ts",
+    "./password": "./src/password.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "jose": "^5.9.6"
+  },
+  "devDependencies": {
+    "@amable/config": "workspace:*",
+    "@types/bcryptjs": "^2.4.6",
+    "eslint": "^9.16.0",
+    "typescript": "^5.7.2"
+  }
+}

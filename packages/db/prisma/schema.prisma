@@ -1,0 +1,553 @@
+// Amable Studio — control plane schema
+// https://www.prisma.io/docs
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum IdentityProvider {
+  password
+  google
+  github
+  apple
+  oidc
+  saml
+}
+
+enum WorkspacePlan {
+  free
+  pro
+  business
+  enterprise
+}
+
+enum WorkspaceRole {
+  owner
+  admin
+  editor
+  viewer
+  collaborator
+}
+
+enum ProjectVisibility {
+  workspace
+  restricted
+}
+
+enum ProjectStatus {
+  active
+  archived
+}
+
+enum RunMode {
+  plan
+  build
+  test
+  publish
+  security_scan
+}
+
+enum RunStatus {
+  queued
+  running
+  blocked
+  done
+  failed
+  cancelled
+}
+
+enum PublicationAudience {
+  workspace
+  anyone
+}
+
+enum PublicationStatus {
+  draft
+  building
+  live
+  unpublished
+}
+
+enum DomainSslStatus {
+  pending
+  verifying
+  active
+  error
+}
+
+enum CreditEntryType {
+  grant_monthly
+  grant_daily
+  consume
+  topup
+  rollover
+  refund
+  bonus
+}
+
+enum SecurityFindingSeverity {
+  info
+  low
+  medium
+  high
+  critical
+}
+
+enum SecurityFindingStatus {
+  open
+  acknowledged
+  resolved
+  ignored
+}
+
+model User {
+  id                 String    @id @default(cuid())
+  email              String    @unique
+  passwordHash       String?
+  emailVerified      DateTime?
+  name               String?
+  username           String?   @unique
+  bio                String?
+  location           String?
+  website            String?
+  avatarUrl          String?
+  bannerUrl          String?
+  profilePublic      Boolean   @default(false)
+  twoFactorEnabled   Boolean   @default(false)
+  twoFactorSecret    String? // encrypted in prod
+  phone              String? // for SMS 2FA mock
+  locale             String    @default("es-ES")
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  identities       Identity[]
+  preferences      UserPreference?
+  workspaceMembers WorkspaceMember[]
+  projectMembers   ProjectMember[]
+  notifications    Notification[]
+  comments         Comment[]
+  auditLogs        AuditLog[]
+  chatMessages     ChatMessage[]
+}
+
+model Identity {
+  id             String             @id @default(cuid())
+  userId         String
+  provider       IdentityProvider
+  providerUserId String
+  emailVerified  Boolean            @default(false)
+  createdAt      DateTime           @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
+}
+
+model UserPreference {
+  userId           String @id
+  theme            String @default("dark")
+  reduceMotion     Boolean @default(false)
+  commandPaletteHintShown Boolean @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Workspace {
+  id               String        @id @default(cuid())
+  name             String
+  plan             WorkspacePlan @default(free)
+  region           String        @default("eu-west")
+  monthlyCredits   Int           @default(30)
+  dailyBonusCredits Int          @default(5)
+  stripeCustomerId String?       @unique
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  members          WorkspaceMember[]
+  projects         Project[]
+  folders          Folder[]
+  creditLedger     CreditLedger[]
+  subscriptions    Subscription[]
+  invoices         Invoice[]
+  connectorAccounts ConnectorAccount[]
+  securityFindings SecurityFinding[] @relation("WorkspaceSecurity")
+  auditLogs        AuditLog[]
+}
+
+model WorkspaceMember {
+  id              String        @id @default(cuid())
+  workspaceId     String
+  userId          String
+  role            WorkspaceRole
+  creditLimit     Int? // per-member cap, null = unlimited
+  invitedEmail    String?
+  inviteToken     String?       @unique
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
+model Folder {
+  id          String   @id @default(cuid())
+  workspaceId String
+  name        String
+  parentId    String?
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  parent    Folder?   @relation("FolderTree", fields: [parentId], references: [id])
+  children  Folder[]  @relation("FolderTree")
+  projects  Project[]
+
+  @@index([workspaceId])
+}
+
+model Project {
+  id                   String            @id @default(cuid())
+  workspaceId          String
+  folderId             String?
+  name                 String
+  slug                 String
+  visibility           ProjectVisibility @default(workspace)
+  status               ProjectStatus     @default(active)
+  primaryBranch        String            @default("main")
+  githubRepoFullName   String?
+  crossProjectSharing  Boolean           @default(false)
+  publicRemix          Boolean           @default(false)
+  hasCloud             Boolean           @default(false)
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  workspace       Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  folder          Folder?           @relation(fields: [folderId], references: [id])
+  members         ProjectMember[]
+  files           ProjectFile[]
+  runs            Run[]
+  commentThreads  CommentThread[]
+  publications    Publication[]
+  connectors      ProjectConnector[]
+  securityFindings SecurityFinding[] @relation("ProjectSecurity")
+  analyticsEvents AnalyticsEvent[]
+  analyticsAggs   AnalyticsAggregate[]
+
+  @@unique([workspaceId, slug])
+  @@index([workspaceId])
+}
+
+model ProjectMember {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String
+  role      String // viewer | editor | admin
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+}
+
+model ProjectFile {
+  id        String   @id @default(cuid())
+  projectId String
+  path      String
+  content   String   @db.Text
+  hash      String
+  size      Int
+  mimeType  String   @default("text/plain")
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, path])
+  @@index([projectId])
+}
+
+model Run {
+  id               String    @id @default(cuid())
+  projectId        String
+  mode             RunMode
+  status           RunStatus @default(queued)
+  prompt           String    @db.Text
+  creditsUsed      Decimal   @default(0) @db.Decimal(10, 2)
+  provider         String?
+  model            String?
+  planDocumentId   String?   @unique
+  errorMessage     String?
+  startedAt        DateTime?
+  finishedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  project      Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  planDocument PlanDocument? @relation(fields: [planDocumentId], references: [id])
+  steps        RunStep[]
+  messages     ChatMessage[]
+}
+
+model RunStep {
+  id        String    @id @default(cuid())
+  runId     String
+  order     Int
+  name      String
+  tool      String?
+  status    RunStatus @default(queued)
+  diff      String?   @db.Text
+  logs      String?   @db.Text
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  run Run @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId])
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  runId     String
+  userId    String?
+  role      String // user | assistant | system
+  content   String   @db.Text
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  run  Run   @relation(fields: [runId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([runId])
+}
+
+model PlanDocument {
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  approved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  run Run?
+}
+
+model CommentThread {
+  id          String   @id @default(cuid())
+  projectId   String
+  anchorSelector String?
+  title       String?
+  resolved    Boolean  @default(false)
+  unread      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  comments Comment[]
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  threadId  String
+  userId    String
+  body      String   @db.Text
+  reactions Json?
+  createdAt DateTime @default(now())
+
+  thread CommentThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user   User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([threadId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  body      String?
+  read      Boolean  @default(false)
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+}
+
+model Publication {
+  id          String              @id @default(cuid())
+  projectId   String
+  audience    PublicationAudience
+  slug        String
+  liveUrl     String?
+  versionRef  String?
+  status      PublicationStatus   @default(draft)
+  seoTitle    String?
+  seoDescription String?
+  publishedAt DateTime?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  project  Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  domains  DomainBinding[]
+
+  @@unique([projectId, slug])
+}
+
+model DomainBinding {
+  id          String           @id @default(cuid())
+  publicationId String
+  hostname    String           @unique
+  sslStatus   DomainSslStatus  @default(pending)
+  verified    Boolean          @default(false)
+  isPrimary   Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+
+  publication Publication @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+}
+
+model ConnectorAccount {
+  id           String   @id @default(cuid())
+  workspaceId  String
+  type         String // github, slack, notion, ...
+  displayName  String?
+  encryptedRef String? // pointer to secret store
+  scopes       String[] @default([])
+  metadata     Json?
+  createdAt    DateTime @default(now())
+
+  workspace Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  projects  ProjectConnector[]
+}
+
+model ProjectConnector {
+  id                   String   @id @default(cuid())
+  projectId            String
+  connectorAccountId   String
+  enabled              Boolean  @default(true)
+  permissions          Json?
+
+  project           Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  connectorAccount  ConnectorAccount @relation(fields: [connectorAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, connectorAccountId])
+}
+
+model CreditLedger {
+  id          String          @id @default(cuid())
+  workspaceId String
+  type        CreditEntryType
+  amount      Int
+  balanceAfter Int?
+  reason      String?
+  runId       String?
+  stripeRef   String?
+  createdAt   DateTime        @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, createdAt])
+}
+
+model Subscription {
+  id                 String   @id @default(cuid())
+  workspaceId        String
+  stripeSubscriptionId String? @unique
+  plan               WorkspacePlan
+  status             String   @default("active")
+  currentPeriodEnd   DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+model Invoice {
+  id          String   @id @default(cuid())
+  workspaceId String
+  stripeInvoiceId String? @unique
+  amountCents Int
+  currency    String   @default("eur")
+  status      String
+  pdfUrl      String?
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+model SecurityFinding {
+  id          String                   @id @default(cuid())
+  workspaceId String?
+  projectId   String?
+  scanner     String
+  severity    SecurityFindingSeverity
+  status      SecurityFindingStatus    @default(open)
+  title       String
+  description String?                  @db.Text
+  remediation String?                  @db.Text
+  metadata    Json?
+  createdAt   DateTime                 @default(now())
+
+  workspace Workspace? @relation("WorkspaceSecurity", fields: [workspaceId], references: [id], onDelete: SetNull)
+  project   Project?   @relation("ProjectSecurity", fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+  @@index([workspaceId])
+}
+
+model AnalyticsEvent {
+  id          String   @id @default(cuid())
+  projectId   String
+  path        String
+  referrer    String?
+  userAgent   String?
+  device      String?
+  country     String?
+  sessionId   String
+  durationMs  Int?
+  createdAt   DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt])
+}
+
+model AnalyticsAggregate {
+  id          String   @id @default(cuid())
+  projectId   String
+  windowStart DateTime
+  windowEnd   DateTime
+  visitors    Int      @default(0)
+  pageviews   Int      @default(0)
+  bounceRate  Float    @default(0)
+  avgDuration Float    @default(0)
+  sources     Json?
+  devices     Json?
+  createdAt   DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, windowStart])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  workspaceId String?
+  userId      String?
+  action      String
+  resource    String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  user      User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, createdAt])
+}

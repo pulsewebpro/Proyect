@@ -1,0 +1,8 @@
+{
+  "name": "@amable/testing",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { "./playwright": "./playwright.base.ts" },
+  "devDependencies": { "@playwright/test": "^1.49.1", "typescript": "^5.7.2" }
+}

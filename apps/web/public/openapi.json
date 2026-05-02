@@ -1,0 +1,47 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Amable Studio API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/v1/me": {
+      "get": {
+        "summary": "Usuario actual"
+      }
+    },
+    "/api/v1/workspaces": {
+      "get": {
+        "summary": "Listar workspaces"
+      }
+    },
+    "/api/v1/projects": {
+      "get": {
+        "summary": "Listar proyectos"
+      },
+      "post": {
+        "summary": "Crear proyecto"
+      }
+    },
+    "/api/v1/projects/{id}/runs": {
+      "post": {
+        "summary": "Crear run"
+      }
+    },
+    "/api/v1/projects/{id}/runs/{runId}/stream": {
+      "get": {
+        "summary": "SSE estado run"
+      }
+    },
+    "/api/v1/projects/{id}/publish": {
+      "post": {
+        "summary": "Publicar"
+      }
+    },
+    "/api/public/analytics": {
+      "post": {
+        "summary": "Beacon analítica pública"
+      }
+    }
+  }
+}

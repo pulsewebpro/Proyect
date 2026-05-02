@@ -1,0 +1,21 @@
+{
+  "name": "@amable/analytics",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@amable/db": "workspace:*"
+  },
+  "devDependencies": {
+    "@amable/config": "workspace:*",
+    "eslint": "^9.16.0",
+    "typescript": "^5.7.2"
+  }
+}
