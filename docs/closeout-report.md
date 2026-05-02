@@ -1,6 +1,8 @@
 # Informe de cierre — Amable Studio
 
-Generado tras la rama `cursor/closeout-honest-8be7`. Comandos ejecutados en el entorno del agente (ver salida de terminal en CI o reproducir localmente con Postgres + Redis).
+Generado tras la rama `cursor/closeout-honest-8be7`.
+
+**En este entorno de agente:** `pnpm lint`, `pnpm typecheck`, `pnpm test` y `pnpm build` se ejecutaron con éxito. No había PostgreSQL en `localhost:5432`, por lo que no se pudieron repetir aquí `prisma migrate deploy`, `db:seed` ni Playwright contra un servidor real; la CI de GitHub (`.github/workflows/ci.yml`) es la referencia para migración, seed, `next start` y `pnpm test:e2e`.
 
 ## Qué funciona (núcleo)
 
@@ -13,8 +15,8 @@ Generado tras la rama `cursor/closeout-honest-8be7`. Comandos ejecutados en el e
 
 ## Qué verifiqué
 
-- `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build` (tras migraciones/seed si aplica).
-- Playwright: flujo registro → publicación → visita pública → analítica ≥ 1 pageview.
+- `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build` en el workspace del agente.
+- Playwright del flujo extendido: ejecutar en CI (servicios Postgres + Redis + app en marcha).
 
 ## Qué cambié (resumen)
 
