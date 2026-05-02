@@ -22,6 +22,8 @@ import {
   TooltipTrigger,
 } from '@amable/ui';
 import { GithubImportForm } from './github-import-form';
+import { GithubExportForm } from './github-export-form';
+import { IntegrationsPanel } from './integrations-panel';
 
 const Editor = dynamic(() => import('./monaco-editor'), { ssr: false });
 
@@ -54,6 +56,7 @@ export default function ProyectoPage() {
   const [commentBody, setCommentBody] = useState('');
   const [analytics, setAnalytics] = useState<Record<string, unknown> | null>(null);
   const [security, setSecurity] = useState<{ title: string; severity: string }[]>([]);
+  const [specJson, setSpecJson] = useState<unknown>(null);
   const [pubOpen, setPubOpen] = useState(false);
   const [pubSlug, setPubSlug] = useState('');
   const [pubAudience, setPubAudience] = useState<'workspace' | 'anyone'>('anyone');
@@ -98,6 +101,12 @@ export default function ProyectoPage() {
     setSecurity((data.findings ?? []).map((f: { title: string; severity: string }) => ({ title: f.title, severity: f.severity })));
   }, [projectId]);
 
+  const loadSpec = useCallback(async () => {
+    const res = await fetch(`/api/v1/projects/${projectId}/product-spec`);
+    const data = await res.json();
+    setSpecJson(data.spec ?? null);
+  }, [projectId]);
+
   const loadAnalytics = useCallback(async () => {
     const res = await fetch(`/api/v1/projects/${projectId}/analytics?range=7d`);
     const data = await res.json();
@@ -110,7 +119,8 @@ export default function ProyectoPage() {
     void loadComments();
     void loadSecurity();
     void loadAnalytics();
-  }, [loadProject, loadFiles, loadComments, loadSecurity, loadAnalytics]);
+    void loadSpec();
+  }, [loadProject, loadFiles, loadComments, loadSecurity, loadAnalytics, loadSpec]);
 
   useEffect(() => {
     if (!runId) return;
@@ -128,10 +138,11 @@ export default function ProyectoPage() {
         es.close();
         void loadFiles();
         void loadProject();
+        void loadSpec();
       }
     };
     return () => es.close();
-  }, [runId, projectId, loadFiles, loadProject]);
+  }, [runId, projectId, loadFiles, loadProject, loadSpec]);
 
   async function startRun() {
     const res = await fetch(`/api/v1/projects/${projectId}/runs`, {
@@ -342,7 +353,8 @@ export default function ProyectoPage() {
                 <TabsTrigger value="security">Seguridad</TabsTrigger>
                 <TabsTrigger value="analytics">Analítica</TabsTrigger>
                 <TabsTrigger value="comments">Comentarios</TabsTrigger>
-                <TabsTrigger value="share">Compartir</TabsTrigger>
+                <TabsTrigger value="spec">Product spec</TabsTrigger>
+                <TabsTrigger value="share">GitHub e integraciones</TabsTrigger>
               </TabsList>
             </div>
             <TabsContent value="preview" className="m-0 flex-1 p-0">
@@ -463,18 +475,32 @@ export default function ProyectoPage() {
                 ))}
               </div>
             </TabsContent>
+            <TabsContent value="spec" className="m-0 flex-1 p-4 text-xs">
+              <pre className="max-h-[60vh] overflow-auto rounded-md border border-white/10 bg-panel p-3 text-muted">
+                {specJson ? JSON.stringify(specJson, null, 2) : 'Sin spec aún. Ejecuta un run en modo Plan.'}
+              </pre>
+            </TabsContent>
             <TabsContent value="share" className="m-0 flex-1 space-y-4 p-4 text-sm">
               <Card>
                 <CardContent className="space-y-3 p-4">
                   <div className="font-medium">Importar desde GitHub</div>
                   <p className="text-xs text-muted">
-                    Descarga archivos .ts/.tsx/.js/.jsx del repo público (o con token). Requiere{' '}
-                    <code className="text-fg">GITHUB_IMPORT_TOKEN</code> o token en el formulario.
+                    Repos públicos sin token hasta límite de API; con token para privado o rate limit.
                   </p>
                   <GithubImportForm projectId={projectId} onDone={() => void loadFiles()} />
                 </CardContent>
               </Card>
-              <p className="text-muted">Invitaciones por correo: próxima iteración.</p>
+              <Card>
+                <CardContent className="space-y-3 p-4">
+                  <GithubExportForm projectId={projectId} />
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="space-y-3 p-4">
+                  <div className="font-medium">Integraciones</div>
+                  <IntegrationsPanel projectId={projectId} />
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
         </div>

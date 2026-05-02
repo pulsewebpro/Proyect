@@ -7,8 +7,7 @@ import {
   CreditEntryType,
   PublicationAudience,
   PublicationStatus,
-  SecurityFindingSeverity,
-  SecurityFindingStatus,
+  IntegrationType,
 } from '@prisma/client';
 import { hashPassword } from '@amable/auth';
 
@@ -26,6 +25,10 @@ async function main() {
   await prisma.runStep.deleteMany();
   await prisma.run.deleteMany();
   await prisma.planDocument.deleteMany();
+  await prisma.projectProductSpec.deleteMany();
+  await prisma.generatedRow.deleteMany();
+  await prisma.generatedAppUser.deleteMany();
+  await prisma.projectIntegration.deleteMany();
   await prisma.projectFile.deleteMany();
   await prisma.projectConnector.deleteMany();
   await prisma.connectorAccount.deleteMany();
@@ -162,7 +165,7 @@ async function main() {
         referrer: 'https://google.com',
         userAgent: 'Mozilla/5.0',
         device: 'desktop',
-        country: 'ES',
+        country: null,
         sessionId: 'sess_demo_1',
         durationMs: 12000,
       },
@@ -171,24 +174,38 @@ async function main() {
         path: '/',
         sessionId: 'sess_demo_2',
         device: 'mobile',
-        country: 'ES',
+        country: null,
         durationMs: 4000,
       },
     ],
   });
 
-  await prisma.securityFinding.createMany({
+  await prisma.projectIntegration.createMany({
     data: [
-      {
-        projectId: p0.id,
-        workspaceId: wsA.id,
-        scanner: 'dependencies',
-        severity: SecurityFindingSeverity.medium,
-        status: SecurityFindingStatus.open,
-        title: 'Dependencia con versión antigua',
-        description: 'Actualizar paquete de ejemplo',
-      },
+      { projectId: p0.id, type: IntegrationType.stripe, enabled: false },
+      { projectId: p0.id, type: IntegrationType.supabase, enabled: false },
+      { projectId: p0.id, type: IntegrationType.github, enabled: false },
     ],
+  });
+
+  await prisma.projectProductSpec.create({
+    data: {
+      projectId: p0.id,
+      specJson: {
+        title: 'CRM Ventas (demo)',
+        pages: [{ name: 'Inicio', path: '/' }],
+        entities: [{ name: 'Lead', fields: [{ name: 'name', type: 'string', required: true }] }],
+        auth: { enabled: true, roles: ['user', 'admin'] },
+        api: {
+          endpoints: [
+            { method: 'GET', path: '/api/app/Lead', entity: 'Lead', action: 'list' },
+            { method: 'POST', path: '/api/app/Lead', entity: 'Lead', action: 'create' },
+          ],
+        },
+        integrations: ['stripe'],
+        permissions: ['admin:all'],
+      },
+    },
   });
 
   const pub = await prisma.publication.create({
