@@ -2,13 +2,13 @@
 
 ## Vista general
 
-La aplicación separa el **plano de control** (usuarios, workspaces, proyectos, runs, facturación) del **runtime de proyectos generados** (archivos en Postgres, vista previa HTML, publicación en ruta `/sitio/[slug]`).
+La aplicación separa el **plano de control** (usuarios, workspaces, proyectos, runs, facturación) del **runtime de proyectos generados** (archivos en Postgres, **bundle de preview/publicación con esbuild**, publicación en `/sitio/[slug]`).
 
 - **apps/web**: Next.js 15 con Route Handlers REST bajo `/api/v1`, autenticación por cookie JWT (`jose`), middleware de protección de rutas, SSE para estado de runs, y UI en español.
 - **apps/worker**: Worker BullMQ que procesa jobs `process` en la cola `runs` llamando a `@amable/jobs`.
 - **packages/db**: Prisma + PostgreSQL. Modelos para usuarios, workspaces, proyectos, archivos, runs, comentarios, publicaciones, analítica, etc.
 - **packages/jobs**: Orquestación de un run (modo Plan vs Construir) con stream simulado `@amable/ai` y aplicación de diffs a `ProjectFile` en modo Construir.
-- **packages/credits**: Ledger de créditos; el consumo usa una transacción Prisma **Serializable** (recalcular saldo desde filas + insertar consumo en el mismo commit) para reducir carreras.
+- **packages/credits**: Ledger de créditos; el consumo usa transacción **Serializable** con **reintentos** ante `P2034`.
 - **packages/ui**: Tokens CSS, componentes Radix + Tailwind exportados desde `@amable/ui`.
 
 ## Limitaciones de escalado (conocidas)
@@ -24,8 +24,11 @@ La aplicación separa el **plano de control** (usuarios, workspaces, proyectos, 
 
 ## Publicación y analítica
 
-- `POST /api/v1/projects/:id/publish` crea/actualiza `Publication` y opcionalmente `DomainBinding`.
-- Las visitas se registran con `POST /api/public/analytics` desde la página publicada (`/sitio/[slug]`), persistiendo `AnalyticsEvent`.
+- `POST /api/v1/projects/:id/publish` crea/actualiza `Publication` y opcionalmente `DomainBinding` (evita duplicar hostname si ya existe).
+- `DELETE /api/v1/projects/:id/publish` despublica (limpia dominios, marca `unpublished`).
+- Vista previa autenticada: `GET /api/v1/projects/:id/preview-frame` (esbuild + React).
+- Sitio publicado: shell en `/sitio/[slug]` + `GET /api/public/sitio/:slug/frame` (mismo bundler).
+- Las visitas se registran con `POST /api/public/analytics` desde la shell publicada, persistiendo `AnalyticsEvent`.
 
 ## Seguridad
 

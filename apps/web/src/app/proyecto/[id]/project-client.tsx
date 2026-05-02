@@ -43,7 +43,12 @@ export default function ProyectoPage() {
   const [activePath, setActivePath] = useState('src/App.tsx');
   const [bg, setBg] = useState('#0f0f0f');
   const [threads, setThreads] = useState<
-    { id: string; title: string | null; comments: { body: string; user: { email: string } }[] }[]
+    {
+      id: string;
+      title: string | null;
+      resolved: boolean;
+      comments: { body: string; user: { email: string } }[];
+    }[]
   >([]);
   const [commentBody, setCommentBody] = useState('');
   const [analytics, setAnalytics] = useState<Record<string, unknown> | null>(null);
@@ -57,6 +62,8 @@ export default function ProyectoPage() {
     () => files.find((f) => f.path === activePath) ?? { path: activePath, content: '' },
     [files, activePath]
   );
+
+  const previewKey = useMemo(() => files.map((f) => `${f.path}:${f.content.length}`).join('|'), [files]);
 
   const loadProject = useCallback(async () => {
     const res = await fetch(`/api/v1/projects/${projectId}`);
@@ -200,6 +207,26 @@ export default function ProyectoPage() {
     void loadComments();
   }
 
+  async function unpublish() {
+    if (!confirm('¿Despublicar el proyecto?')) return;
+    const res = await fetch(`/api/v1/projects/${projectId}/publish`, { method: 'DELETE' });
+    if (!res.ok) {
+      alert('Error al despublicar');
+      return;
+    }
+    alert('Despublicado');
+  }
+
+  async function setThreadResolved(threadId: string, resolved: boolean) {
+    const res = await fetch(`/api/v1/projects/${projectId}/comments/${threadId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ resolved }),
+    });
+    if (!res.ok) return;
+    void loadComments();
+  }
+
   async function sendThread(threadId: string) {
     await fetch(`/api/v1/projects/${projectId}/comments/${threadId}/send-to-agent`, { method: 'POST' });
     void loadComments();
@@ -225,6 +252,9 @@ export default function ProyectoPage() {
           </Button>
           <Button variant="secondary" type="button" onClick={() => setPubOpen(true)}>
             Publicar
+          </Button>
+          <Button variant="ghost" type="button" onClick={() => void unpublish()}>
+            Despublicar
           </Button>
         </div>
       </header>
@@ -311,9 +341,11 @@ export default function ProyectoPage() {
             </div>
             <TabsContent value="preview" className="m-0 flex-1 p-0">
               <iframe
-                title="preview"
-                className="h-[60vh] w-full bg-white"
-                src={`/api/v1/projects/${projectId}/preview-html`}
+                key={previewKey}
+                title="Vista previa"
+                className="h-[60vh] w-full bg-[#0f0f0f]"
+                src={`/api/v1/projects/${projectId}/preview-frame`}
+                sandbox="allow-scripts allow-same-origin"
               />
             </TabsContent>
             <TabsContent value="code" className="m-0 flex-1 p-3">
@@ -395,7 +427,12 @@ export default function ProyectoPage() {
               <div className="space-y-3">
                 {threads.map((t) => (
                   <div key={t.id} className="rounded-md border border-white/10 bg-panel p-3 text-sm">
-                    <div className="font-medium">{t.title}</div>
+                    <div className="font-medium">
+                      {t.title}
+                      {t.resolved ? (
+                        <span className="ml-2 text-xs text-muted">(resuelto)</span>
+                      ) : null}
+                    </div>
                     <div className="mt-2 space-y-1 text-xs text-muted">
                       {t.comments.map((c, i) => (
                         <div key={i}>
@@ -407,8 +444,13 @@ export default function ProyectoPage() {
                       <Button size="sm" variant="secondary" type="button" onClick={() => void sendThread(t.id)}>
                         Enviar al agente
                       </Button>
-                      <Button size="sm" variant="ghost" type="button" disabled>
-                        Resolver
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        type="button"
+                        onClick={() => void setThreadResolved(t.id, !t.resolved)}
+                      >
+                        {t.resolved ? 'Reabrir' : 'Resolver'}
                       </Button>
                     </div>
                   </div>
@@ -449,6 +491,9 @@ export default function ProyectoPage() {
             </label>
             <Button type="button" onClick={() => void publish()}>
               Publicar
+            </Button>
+            <Button variant="secondary" type="button" onClick={() => void unpublish()}>
+              Despublicar
             </Button>
           </div>
         </DialogContent>

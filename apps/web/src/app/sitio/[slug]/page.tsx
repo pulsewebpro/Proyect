@@ -10,19 +10,21 @@ export default async function PublishedSite({ params }: Props) {
     include: { project: true },
   });
   if (!pub) notFound();
-  const publication = pub;
-  const appFile = await prisma.projectFile.findFirst({
-    where: { projectId: publication.projectId, path: 'src/App.tsx' },
-  });
+
+  const frameSrc = `/api/public/sitio/${encodeURIComponent(slug)}/frame`;
+
   return (
     <div className="min-h-dvh bg-bg text-fg">
-      <div className="mx-auto max-w-3xl px-6 py-10">
-        <h1 className="text-2xl font-semibold">{publication.project.name}</h1>
-        <p className="mt-2 text-muted">Publicación en vivo (vista simplificada).</p>
-        <pre className="mt-6 overflow-auto rounded-[var(--radius)] border border-white/10 bg-panel p-4 text-sm">
-          {appFile?.content ?? '// sin App.tsx'}
-        </pre>
-      </div>
+      <header className="border-b border-white/10 px-4 py-3">
+        <h1 className="text-lg font-semibold">{pub.project.name}</h1>
+        <p className="text-xs text-muted">Publicación en vivo (runtime compilado)</p>
+      </header>
+      <iframe
+        title="Aplicación publicada"
+        className="h-[calc(100dvh-52px)] w-full border-0 bg-[#0f0f0f]"
+        src={frameSrc}
+        sandbox="allow-scripts allow-same-origin"
+      />
       <script
         dangerouslySetInnerHTML={{
           __html: `

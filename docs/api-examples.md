@@ -40,6 +40,20 @@ curl -s -X POST "$BASE/api/v1/projects/<PROJECT_ID>/publish" -b cookies.txt \
   -d '{"audience":"anyone","slug":"mi-app","runSecurityCheck":true}'
 ```
 
+## Despublicar
+
+```bash
+curl -s -X DELETE "$BASE/api/v1/projects/<PROJECT_ID>/publish" -b cookies.txt
+```
+
+## Resolver hilo de comentarios
+
+```bash
+curl -s -X PATCH "$BASE/api/v1/projects/<PROJECT_ID>/comments/<THREAD_ID>" -b cookies.txt \
+  -H "Content-Type: application/json" \
+  -d '{"resolved":true}'
+```
+
 ## Analítica (proyecto)
 
 ```bash
