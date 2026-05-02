@@ -19,7 +19,7 @@ export async function recordPageview(
       referrer: params.referrer,
       userAgent: params.userAgent,
       device,
-      country: 'ES',
+      country: null,
       sessionId: params.sessionId,
     },
   });

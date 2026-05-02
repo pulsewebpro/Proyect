@@ -121,20 +121,9 @@ export default function DashboardPage() {
             </button>
           ))}
         </nav>
-        <div className="mt-6 space-y-2 px-3">
-          <Button variant="secondary" className="w-full" type="button">
-            Invitar
-          </Button>
-          <Button variant="ghost" className="w-full justify-start text-muted" type="button">
-            Actualizar plan
-          </Button>
-          <Button variant="ghost" className="w-full justify-start text-muted" type="button">
-            Bandeja de entrada
-          </Button>
-          <Button variant="ghost" className="w-full justify-start text-muted" type="button">
-            Novedades
-          </Button>
-        </div>
+        <p className="mt-6 px-3 text-xs text-muted">
+          Facturación, invitaciones por correo y notificaciones no están en esta versión.
+        </p>
       </aside>
       <main className="flex-1">
         <header className="flex items-center justify-between border-b border-white/10 px-4 py-3 lg:px-8">

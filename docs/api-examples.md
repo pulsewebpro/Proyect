@@ -59,6 +59,14 @@ curl -s -X PATCH "$BASE/api/v1/projects/<PROJECT_ID>/comments/<THREAD_ID>" -b co
 ```bash
 curl -s -X POST "$BASE/api/v1/projects/<PROJECT_ID>/github/import" -b cookies.txt \
   -H "Content-Type: application/json" \
+  -d '{"owner":"vercel","repo":"next.js","branch":"canary"}'
+```
+
+Con token (privado o si GitHub exige cuota):
+
+```bash
+curl -s -X POST "$BASE/api/v1/projects/<PROJECT_ID>/github/import" -b cookies.txt \
+  -H "Content-Type: application/json" \
   -d '{"owner":"vercel","repo":"next.js","branch":"canary","token":"<GITHUB_PAT>"}'
 ```
 

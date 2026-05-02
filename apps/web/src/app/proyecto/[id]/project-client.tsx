@@ -53,10 +53,10 @@ export default function ProyectoPage() {
   >([]);
   const [commentBody, setCommentBody] = useState('');
   const [analytics, setAnalytics] = useState<Record<string, unknown> | null>(null);
-  const [security, setSecurity] = useState<{ title: string; severity: string }[]>([]);
   const [pubOpen, setPubOpen] = useState(false);
   const [pubSlug, setPubSlug] = useState('');
   const [pubAudience, setPubAudience] = useState<'workspace' | 'anyone'>('anyone');
+  const [runSecurityCheck, setRunSecurityCheck] = useState(true);
   const esRef = useRef<EventSource | null>(null);
 
   const activeFile = useMemo(
@@ -92,12 +92,6 @@ export default function ProyectoPage() {
     setThreads(data.threads ?? []);
   }, [projectId]);
 
-  const loadSecurity = useCallback(async () => {
-    const res = await fetch(`/api/v1/projects/${projectId}/security`);
-    const data = await res.json();
-    setSecurity((data.findings ?? []).map((f: { title: string; severity: string }) => ({ title: f.title, severity: f.severity })));
-  }, [projectId]);
-
   const loadAnalytics = useCallback(async () => {
     const res = await fetch(`/api/v1/projects/${projectId}/analytics?range=7d`);
     const data = await res.json();
@@ -108,9 +102,12 @@ export default function ProyectoPage() {
     void loadProject();
     void loadFiles();
     void loadComments();
-    void loadSecurity();
     void loadAnalytics();
-  }, [loadProject, loadFiles, loadComments, loadSecurity, loadAnalytics]);
+  }, [loadProject, loadFiles, loadComments, loadAnalytics]);
+
+  useEffect(() => {
+    if (tab === 'analytics') void loadAnalytics();
+  }, [tab, loadAnalytics]);
 
   useEffect(() => {
     if (!runId) return;
@@ -186,14 +183,16 @@ export default function ProyectoPage() {
     const res = await fetch(`/api/v1/projects/${projectId}/publish`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ audience: pubAudience, slug: pubSlug, runSecurityCheck: true }),
+      body: JSON.stringify({ audience: pubAudience, slug: pubSlug, runSecurityCheck }),
     });
     if (!res.ok) {
       const j = await res.json().catch(() => ({}));
       const msg =
-        j.details && Array.isArray(j.details)
-          ? `Compilación: ${j.details.join('\n')}`
-          : (j.error as string) ?? 'Error al publicar';
+        j.error === 'revisión_paquete_fallida' && Array.isArray(j.details)
+          ? `Revisión de package.json: ${j.details.map((d: { title?: string }) => d.title ?? JSON.stringify(d)).join('; ')}`
+          : j.details && Array.isArray(j.details)
+            ? `Compilación: ${j.details.join('\n')}`
+            : (j.error as string) ?? 'Error al publicar';
       alert(msg);
       return;
     }
@@ -297,7 +296,7 @@ export default function ProyectoPage() {
                   Dictar prompt
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Dictar prompt</TooltipContent>
+              <TooltipContent>No disponible</TooltipContent>
             </Tooltip>
           </div>
           <textarea
@@ -339,7 +338,7 @@ export default function ProyectoPage() {
                 <TabsTrigger value="preview">Vista previa</TabsTrigger>
                 <TabsTrigger value="code">Código</TabsTrigger>
                 <TabsTrigger value="visual">Edición visual</TabsTrigger>
-                <TabsTrigger value="security">Seguridad</TabsTrigger>
+                <TabsTrigger value="prepublish">Antes de publicar</TabsTrigger>
                 <TabsTrigger value="analytics">Analítica</TabsTrigger>
                 <TabsTrigger value="comments">Comentarios</TabsTrigger>
                 <TabsTrigger value="share">Compartir</TabsTrigger>
@@ -389,35 +388,41 @@ export default function ProyectoPage() {
                 </CardContent>
               </Card>
             </TabsContent>
-            <TabsContent value="security" className="m-0 flex-1 p-4 text-sm">
-              <ul className="space-y-2">
-                {security.map((f, i) => (
-                  <li key={i} className="rounded-md border border-white/10 bg-panel p-3">
-                    <div className="font-medium">{f.title}</div>
-                    <div className="text-xs text-muted">{f.severity}</div>
-                  </li>
-                ))}
-              </ul>
+            <TabsContent value="prepublish" className="m-0 flex-1 space-y-3 p-4 text-sm text-muted">
+              <p>
+                Al publicar con la casilla activada, el servidor ejecuta una{' '}
+                <strong className="text-fg">comprobación heurística de package.json</strong> (protocolos{' '}
+                <code className="text-fg">file:</code>, <code className="text-fg">link:</code>, etc.) que el runtime
+                de preview no puede satisfacer. No es un escáner CVE ni SAST.
+              </p>
+              <p>
+                La compilación con esbuild es la segunda puerta: si falla, la publicación se rechaza con detalle.
+              </p>
             </TabsContent>
             <TabsContent value="analytics" className="m-0 flex-1 p-4 text-sm">
               {analytics ? (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="text-muted">Visitantes</div>
-                      <div className="text-2xl font-semibold">
-                        {(analytics.metrics as { visitors?: number })?.visitors ?? 0}
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="text-muted">Páginas vistas</div>
-                      <div className="text-2xl font-semibold">
-                        {(analytics.metrics as { pageviews?: number })?.pageviews ?? 0}
-                      </div>
-                    </CardContent>
-                  </Card>
+                <div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-muted">Visitantes</div>
+                        <div className="text-2xl font-semibold">
+                          {(analytics.metrics as { visitors?: number })?.visitors ?? 0}
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-muted">Páginas vistas</div>
+                        <div className="text-2xl font-semibold">
+                          {(analytics.metrics as { pageviews?: number })?.pageviews ?? 0}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                  <p className="mt-3 text-xs text-muted">
+                    País no se infiere (valor almacenado nulo). Dispositivo se deduce del user-agent del visitante.
+                  </p>
                 </div>
               ) : (
                 <div className="text-muted">Sin datos</div>
@@ -468,13 +473,14 @@ export default function ProyectoPage() {
                 <CardContent className="space-y-3 p-4">
                   <div className="font-medium">Importar desde GitHub</div>
                   <p className="text-xs text-muted">
-                    Descarga archivos .ts/.tsx/.js/.jsx del repo público (o con token). Requiere{' '}
-                    <code className="text-fg">GITHUB_IMPORT_TOKEN</code> o token en el formulario.
+                    Repos públicos: sin token hasta que GitHub exija autenticación o límite de peticiones; entonces usa
+                    token en el formulario o <code className="text-fg">GITHUB_IMPORT_TOKEN</code>. No hay push ni sync
+                    automático: para llevar el código a GitHub usa <strong className="text-fg">ZIP</strong> y sube el
+                    contenido manualmente.
                   </p>
                   <GithubImportForm projectId={projectId} onDone={() => void loadFiles()} />
                 </CardContent>
               </Card>
-              <p className="text-muted">Invitaciones por correo: próxima iteración.</p>
             </TabsContent>
           </Tabs>
         </div>
@@ -503,7 +509,12 @@ export default function ProyectoPage() {
               </select>
             </div>
             <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" defaultChecked /> Ejecutar revisión de seguridad
+              <input
+                type="checkbox"
+                checked={runSecurityCheck}
+                onChange={(e) => setRunSecurityCheck(e.target.checked)}
+              />
+              Revisar package.json antes de publicar (heurística, no CVE)
             </label>
             <Button type="button" onClick={() => void publish()}>
               Publicar

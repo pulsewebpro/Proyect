@@ -24,13 +24,14 @@ La aplicación separa el **plano de control** (usuarios, workspaces, proyectos, 
 
 ## Publicación y analítica
 
-- `POST /api/v1/projects/:id/publish` **compila el proyecto con el mismo esbuild** que preview; si falla, **422** con `compilación_fallida`. Si OK, upsert `Publication` + `DomainBinding` opcional.
+- `POST /api/v1/projects/:id/publish` **compila** tras una **revisión heurística opcional** de `package.json` (`runSecurityCheck`); bloqueos devuelven **422** `revisión_paquete_fallida`. Luego esbuild; **422** `compilación_fallida` si falla. Si OK, upsert `Publication` + `DomainBinding` opcional.
 - `DELETE /api/v1/projects/:id/publish` despublica (limpia dominios, marca `unpublished`).
 - Vista previa autenticada: `GET /api/v1/projects/:id/preview-frame` (esbuild + React).
 - Sitio publicado: shell en `/sitio/[slug]` + `GET /api/public/sitio/:slug/frame` (mismo bundler).
-- Las visitas se registran con `POST /api/public/analytics` desde la shell publicada, persistiendo `AnalyticsEvent`.
+- Las visitas se registran con `POST /api/public/analytics` desde la shell publicada, persistiendo `AnalyticsEvent` (país `null`; dispositivo heurístico desde user-agent).
 
 ## Seguridad
 
 - JWT en cookie HttpOnly. El middleware solo importa `@amable/auth/session` para no arrastrar `bcryptjs` al Edge bundle.
 - En producción: rotar `AUTH_SECRET`, TLS en el proxy, y políticas de cookies `Secure`.
+- Antes de publicar (opcional): comprobación **heurística** de dependencias en `package.json` (no CVE/SAST). La compilación es la segunda barrera.

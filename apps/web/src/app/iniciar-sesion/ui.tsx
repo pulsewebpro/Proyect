@@ -78,16 +78,14 @@ export default function IniciarSesionClient() {
             <Button variant="secondary" className="w-full" type="button" asChild>
               <a href="/api/auth/oauth/github">Continuar con GitHub</a>
             </Button>
-            <Button variant="secondary" className="w-full" type="button" asChild>
-              <a href="/api/auth/oauth/apple">Continuar con Apple</a>
-            </Button>
           </div>
+          <p className="mt-2 text-center text-xs text-muted">Apple Sign In no está soportado.</p>
           <p className="mt-6 text-center text-sm text-muted">
             <Link className="text-accent-6 underline-offset-4 hover:underline" href="/registro">
               Crear cuenta
             </Link>
             {' · '}
-            <span className="text-muted">He olvidado mi contraseña</span>
+            <span className="text-muted">Recuperación de contraseña no disponible</span>
           </p>
         </CardContent>
       </Card>

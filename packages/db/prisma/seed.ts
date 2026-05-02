@@ -7,8 +7,6 @@ import {
   CreditEntryType,
   PublicationAudience,
   PublicationStatus,
-  SecurityFindingSeverity,
-  SecurityFindingStatus,
 } from '@prisma/client';
 import { hashPassword } from '@amable/auth';
 
@@ -160,9 +158,9 @@ async function main() {
         projectId: p0.id,
         path: '/',
         referrer: 'https://google.com',
-        userAgent: 'Mozilla/5.0',
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
         device: 'desktop',
-        country: 'ES',
+        country: null,
         sessionId: 'sess_demo_1',
         durationMs: 12000,
       },
@@ -170,23 +168,10 @@ async function main() {
         projectId: p0.id,
         path: '/',
         sessionId: 'sess_demo_2',
+        userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)',
         device: 'mobile',
-        country: 'ES',
+        country: null,
         durationMs: 4000,
-      },
-    ],
-  });
-
-  await prisma.securityFinding.createMany({
-    data: [
-      {
-        projectId: p0.id,
-        workspaceId: wsA.id,
-        scanner: 'dependencies',
-        severity: SecurityFindingSeverity.medium,
-        status: SecurityFindingStatus.open,
-        title: 'Dependencia con versión antigua',
-        description: 'Actualizar paquete de ejemplo',
       },
     ],
   });

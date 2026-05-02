@@ -34,7 +34,7 @@ export function GithubImportForm({ projectId, onDone }: { projectId: string; onD
       <Input placeholder="owner (ej. vercel)" value={owner} onChange={(e) => setOwner(e.target.value)} />
       <Input placeholder="repo" value={repo} onChange={(e) => setRepo(e.target.value)} />
       <Input placeholder="rama" value={branch} onChange={(e) => setBranch(e.target.value)} />
-      <Input type="password" placeholder="token GitHub (opcional si hay env)" value={token} onChange={(e) => setToken(e.target.value)} />
+      <Input type="password" placeholder="Token GitHub (opcional; público sin token)" value={token} onChange={(e) => setToken(e.target.value)} />
       <Button type="button" disabled={loading || !owner || !repo} onClick={() => void submit()}>
         Importar
       </Button>

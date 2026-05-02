@@ -4,6 +4,7 @@ import { prisma } from '@amable/db';
 import { publishProjectSchema } from '@amable/shared';
 import { PublicationAudience, PublicationStatus } from '@prisma/client';
 import { bundleProjectFiles } from '@/server/preview-bundle';
+import { runPublishPackageJsonGate } from '@/server/publish-security-gate';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -31,6 +32,15 @@ export async function POST(req: Request, ctx: Ctx) {
     where: { projectId },
     select: { path: true, content: true },
   });
+  if (parsed.data.runSecurityCheck) {
+    const gate = runPublishPackageJsonGate(files);
+    if (gate.blocked) {
+      return NextResponse.json(
+        { error: 'revisión_paquete_fallida', details: gate.findings },
+        { status: 422 }
+      );
+    }
+  }
   const build = await bundleProjectFiles(files);
   if (build.errors.length) {
     return NextResponse.json(

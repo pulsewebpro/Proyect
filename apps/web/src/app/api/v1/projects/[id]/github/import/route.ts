@@ -80,17 +80,25 @@ export async function POST(req: Request, ctx: Ctx) {
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   const token = parsed.data.token ?? process.env.GITHUB_IMPORT_TOKEN;
-  if (!token) {
-    return NextResponse.json(
-      { error: 'Falta token: envía {token} o configura GITHUB_IMPORT_TOKEN' },
-      { status: 400 }
-    );
-  }
   const files: { path: string; content: string }[] = [];
   try {
     await collectFiles(parsed.data.owner, parsed.data.repo, parsed.data.branch, '', token, files, 0);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
+    const needsAuth =
+      /\b401\b/.test(msg) ||
+      /\b403\b/.test(msg) ||
+      /rate limit/i.test(msg);
+    if (!token && needsAuth) {
+      return NextResponse.json(
+        {
+          error: 'github_needs_token',
+          details:
+            'Este repositorio requiere autenticación o GitHub aplicó límite de peticiones. Repite la importación con un token en el formulario o configura GITHUB_IMPORT_TOKEN.',
+        },
+        { status: 401 }
+      );
+    }
     return NextResponse.json({ error: 'github_fetch_failed', details: msg }, { status: 502 });
   }
   if (files.length === 0) {
