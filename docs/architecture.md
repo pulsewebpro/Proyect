@@ -8,8 +8,12 @@ La aplicación separa el **plano de control** (usuarios, workspaces, proyectos, 
 - **apps/worker**: Worker BullMQ que procesa jobs `process` en la cola `runs` llamando a `@amable/jobs`.
 - **packages/db**: Prisma + PostgreSQL. Modelos para usuarios, workspaces, proyectos, archivos, runs, comentarios, publicaciones, analítica, etc.
 - **packages/jobs**: Orquestación de un run (modo Plan vs Construir) con stream simulado `@amable/ai` y aplicación de diffs a `ProjectFile` en modo Construir.
-- **packages/credits**: Ledger de créditos y consumo atómico lógico por workspace.
+- **packages/credits**: Ledger de créditos; el consumo usa una transacción Prisma **Serializable** (recalcular saldo desde filas + insertar consumo en el mismo commit) para reducir carreras.
 - **packages/ui**: Tokens CSS, componentes Radix + Tailwind exportados desde `@amable/ui`.
+
+## Limitaciones de escalado (conocidas)
+
+- El endpoint SSE de runs **consulta la base de datos en bucle** (~500 ms) hasta terminar el run; es adecuado para demos, no para muchos clientes simultáneos sin sustituir por eventos push o canal dedicado.
 
 ## Flujo de un run
 

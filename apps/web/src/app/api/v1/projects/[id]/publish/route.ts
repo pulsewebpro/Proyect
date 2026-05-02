@@ -23,22 +23,25 @@ export async function POST(req: Request, ctx: Ctx) {
   const base = process.env.PUBLIC_APP_URL ?? 'http://localhost:3000';
   const audience =
     parsed.data.audience === 'workspace' ? PublicationAudience.workspace : PublicationAudience.anyone;
+  const slug = parsed.data.slug;
+  const liveUrl = `${base}/sitio/${slug}`;
   const pub = await prisma.publication.upsert({
-    where: { projectId_slug: { projectId, slug: parsed.data.slug } },
+    where: { projectId_slug: { projectId, slug } },
     create: {
       projectId,
       audience,
-      slug: parsed.data.slug,
+      slug,
       status: PublicationStatus.live,
-      liveUrl: `${base}/sitio/${project.slug}`,
+      liveUrl,
       versionRef: `git:${project.primaryBranch}`,
       publishedAt: new Date(),
       seoTitle: project.name,
     },
     update: {
       audience,
+      slug,
       status: PublicationStatus.live,
-      liveUrl: `${base}/sitio/${parsed.data.slug}`,
+      liveUrl,
       publishedAt: new Date(),
     },
   });
