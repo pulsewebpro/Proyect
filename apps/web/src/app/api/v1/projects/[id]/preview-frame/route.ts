@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/session';
 import { prisma } from '@amable/db';
-import { bundleAppForPreview, previewShellHtml } from '@/server/preview-bundle';
+import { bundleProjectFiles, previewShellHtml } from '@/server/preview-bundle';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -13,11 +13,11 @@ export async function GET(_req: Request, ctx: Ctx) {
     where: { id: projectId, workspace: { members: { some: { userId: user.id } } } },
   });
   if (!ok) return new NextResponse('No encontrado', { status: 404 });
-  const file = await prisma.projectFile.findFirst({
-    where: { projectId, path: 'src/App.tsx' },
+  const rows = await prisma.projectFile.findMany({
+    where: { projectId },
+    select: { path: true, content: true },
   });
-  const source = file?.content ?? 'export default function App(){return null}';
-  const { js, errors } = await bundleAppForPreview(source);
+  const { js, errors } = await bundleProjectFiles(rows);
   if (errors.length) {
     const errHtml = previewShellHtml(
       `document.body.innerHTML='<pre style="padding:16px;white-space:pre-wrap;font:12px monospace;color:#f87171">'+${JSON.stringify(errors.join('\n'))}+'</pre>';`,

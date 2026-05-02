@@ -78,14 +78,14 @@ export default function RegistroPage() {
             </Button>
           </form>
           <div className="mt-6 space-y-2">
-            <Button variant="secondary" className="w-full" type="button" disabled>
-              Continuar con Google
+            <Button variant="secondary" className="w-full" type="button" asChild>
+              <a href="/api/auth/oauth/google">Continuar con Google</a>
             </Button>
-            <Button variant="secondary" className="w-full" type="button" disabled>
-              Continuar con GitHub
+            <Button variant="secondary" className="w-full" type="button" asChild>
+              <a href="/api/auth/oauth/github">Continuar con GitHub</a>
             </Button>
-            <Button variant="secondary" className="w-full" type="button" disabled>
-              Continuar con Apple
+            <Button variant="secondary" className="w-full" type="button" asChild>
+              <a href="/api/auth/oauth/apple">Continuar con Apple</a>
             </Button>
           </div>
           <p className="mt-6 text-center text-sm text-muted">

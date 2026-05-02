@@ -78,7 +78,7 @@ export async function consumeCredits(params: {
       throw e;
     }
   }
-  throw new Error('No se pudo completar el consumo de créditos tras varios reintentos');
+  throw new Error(`No se pudo completar el consumo de créditos tras varios reintentos (último saldo observado: ${lastBalance})`);
 }
 
 function isSerializationConflict(e: unknown): boolean {

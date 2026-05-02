@@ -24,7 +24,7 @@ La aplicación separa el **plano de control** (usuarios, workspaces, proyectos, 
 
 ## Publicación y analítica
 
-- `POST /api/v1/projects/:id/publish` crea/actualiza `Publication` y opcionalmente `DomainBinding` (evita duplicar hostname si ya existe).
+- `POST /api/v1/projects/:id/publish` **compila el proyecto con el mismo esbuild** que preview; si falla, **422** con `compilación_fallida`. Si OK, upsert `Publication` + `DomainBinding` opcional.
 - `DELETE /api/v1/projects/:id/publish` despublica (limpia dominios, marca `unpublished`).
 - Vista previa autenticada: `GET /api/v1/projects/:id/preview-frame` (esbuild + React).
 - Sitio publicado: shell en `/sitio/[slug]` + `GET /api/public/sitio/:slug/frame` (mismo bundler).

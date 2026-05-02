@@ -212,7 +212,6 @@ async function main() {
     },
   });
 
-  // eslint-disable-next-line no-console
   console.log('Seed OK. Usuarios: owner@demo.amable / Demo12345! (y admin/editor/viewer mismo password)');
 }
 

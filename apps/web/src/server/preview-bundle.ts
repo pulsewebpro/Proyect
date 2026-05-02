@@ -1,20 +1,57 @@
 import * as esbuild from 'esbuild';
 import { createRequire } from 'node:module';
+import fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 
 const require = createRequire(import.meta.url);
 
-/**
- * Bundles `src/App.tsx` (TSX) into a single IIFE for browser preview/publish.
- * React is bundled in (no CDN). User code must `export default` a component.
- */
-export async function bundleAppForPreview(appSource: string): Promise<{ js: string; errors: string[] }> {
-  const resolveDir = path.dirname(require.resolve('react/package.json'));
+function normalizeRel(p: string): string {
+  return p.replace(/\\/g, '/').replace(/^\/+/, '');
+}
 
-  const entry = `
+/**
+ * Real multi-file browser bundle: writes sources to a temp dir, runs esbuild once, deletes tree.
+ * Resolves all normal relative/absolute imports between project files.
+ */
+export async function bundleProjectFiles(
+  files: { path: string; content: string }[]
+): Promise<{ js: string; errors: string[] }> {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'amable-bundle-'));
+  try {
+    for (const f of files) {
+      const ext = f.path.split('.').pop()?.toLowerCase();
+      if (!ext || !['ts', 'tsx', 'js', 'jsx'].includes(ext)) continue;
+      const rel = normalizeRel(f.path);
+      const full = path.join(dir, rel);
+      await fs.mkdir(path.dirname(full), { recursive: true });
+      await fs.writeFile(full, f.content, 'utf8');
+    }
+
+    const candidates = ['src/App.tsx', 'src/App.ts', 'src/App.jsx', 'src/App.js', 'App.tsx'];
+    let entryFile: string | null = null;
+    for (const c of candidates) {
+      const full = path.join(dir, c);
+      try {
+        await fs.access(full);
+        entryFile = full;
+        break;
+      } catch {
+        /* */
+      }
+    }
+    if (!entryFile) {
+      return { js: '', errors: ['No se encontró src/App.tsx (ni variantes) en el proyecto.'] };
+    }
+
+    const shim = path.join(dir, '__amable_mount.tsx');
+    const relEntry = './' + path.relative(dir, entryFile).split(path.sep).join('/');
+    await fs.writeFile(
+      shim,
+      `
 import * as React from 'react';
 import * as ReactDOM from 'react-dom/client';
-import App from 'virtual:user-app';
+import App from ${JSON.stringify(relEntry)};
 
 const mount = () => {
   const el = document.getElementById('root');
@@ -27,41 +64,39 @@ if (document.readyState === 'loading') {
 } else {
   mount();
 }
-`;
+`,
+      'utf8'
+    );
 
-  try {
-    const result = await esbuild.build({
-      stdin: {
-        contents: entry,
-        loader: 'tsx',
-        resolveDir,
+    const resolveReact: esbuild.Plugin = {
+      name: 'resolve-react-from-host',
+      setup(build) {
+        const map: [RegExp, string][] = [
+          [/^react$/, require.resolve('react')],
+          [/^react\/jsx-runtime$/, require.resolve('react/jsx-runtime')],
+          [/^react\/jsx-dev-runtime$/, require.resolve('react/jsx-dev-runtime')],
+          [/^react-dom$/, require.resolve('react-dom')],
+          [/^react-dom\/client$/, require.resolve('react-dom/client')],
+        ];
+        for (const [re, p] of map) {
+          build.onResolve({ filter: re }, () => ({ path: p }));
+        }
       },
-      plugins: [
-        {
-          name: 'virtual-user-app',
-          setup(build) {
-            build.onResolve({ filter: /^virtual:user-app$/ }, () => ({
-              path: 'virtual:user-app',
-              namespace: 'userapp',
-            }));
-            build.onLoad({ filter: /.*/, namespace: 'userapp' }, () => ({
-              contents: appSource,
-              loader: 'tsx',
-              resolveDir,
-            }));
-          },
-        },
-      ],
+    };
+
+    const result = await esbuild.build({
+      entryPoints: [shim],
+      absWorkingDir: dir,
       bundle: true,
       write: false,
       format: 'iife',
       platform: 'browser',
       jsx: 'automatic',
       logLevel: 'silent',
-      define: {
-        'process.env.NODE_ENV': '"production"',
-      },
+      define: { 'process.env.NODE_ENV': '"production"' },
+      plugins: [resolveReact],
     });
+
     const file = result.outputFiles?.[0];
     if (!file) return { js: '', errors: ['Sin salida de esbuild'] };
     let js = file.text;
@@ -70,7 +105,13 @@ if (document.readyState === 'loading') {
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return { js: '', errors: [msg] };
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
   }
+}
+
+export async function bundleAppForPreview(appSource: string): Promise<{ js: string; errors: string[] }> {
+  return bundleProjectFiles([{ path: 'src/App.tsx', content: appSource }]);
 }
 
 export function previewShellHtml(embeddedScript: string, title: string): string {

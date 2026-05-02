@@ -21,6 +21,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@amable/ui';
+import { GithubImportForm } from './github-import-form';
 
 const Editor = dynamic(() => import('./monaco-editor'), { ssr: false });
 
@@ -188,7 +189,12 @@ export default function ProyectoPage() {
       body: JSON.stringify({ audience: pubAudience, slug: pubSlug, runSecurityCheck: true }),
     });
     if (!res.ok) {
-      alert('Error al publicar');
+      const j = await res.json().catch(() => ({}));
+      const msg =
+        j.details && Array.isArray(j.details)
+          ? `Compilación: ${j.details.join('\n')}`
+          : (j.error as string) ?? 'Error al publicar';
+      alert(msg);
       return;
     }
     const data = await res.json();
@@ -457,8 +463,18 @@ export default function ProyectoPage() {
                 ))}
               </div>
             </TabsContent>
-            <TabsContent value="share" className="m-0 flex-1 p-4 text-sm text-muted">
-              Compartir con miembros (stub): invitación por correo en próxima iteración.
+            <TabsContent value="share" className="m-0 flex-1 space-y-4 p-4 text-sm">
+              <Card>
+                <CardContent className="space-y-3 p-4">
+                  <div className="font-medium">Importar desde GitHub</div>
+                  <p className="text-xs text-muted">
+                    Descarga archivos .ts/.tsx/.js/.jsx del repo público (o con token). Requiere{' '}
+                    <code className="text-fg">GITHUB_IMPORT_TOKEN</code> o token en el formulario.
+                  </p>
+                  <GithubImportForm projectId={projectId} onDone={() => void loadFiles()} />
+                </CardContent>
+              </Card>
+              <p className="text-muted">Invitaciones por correo: próxima iteración.</p>
             </TabsContent>
           </Tabs>
         </div>

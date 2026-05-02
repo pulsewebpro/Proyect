@@ -7,27 +7,28 @@ Gemelo funcional de la experiencia tipo *Lovable* con nombre **Amable Studio**, 
 ## Alcance implementado en esta base
 
 - Landing pública con CTAs en español.
-- Registro e inicio de sesión (email/contraseña). Los botones OAuth (Google, GitHub, Apple) están en la UI con `disabled` explícito hasta tener adapters (OAuth de servidor **no implementado** aún).
-- Workspace automático en el registro; seed con roles demo.
+- **Autenticación:** email/contraseña (JWT cookie). **OAuth Google y GitHub** vía `GET /api/auth/oauth/{google|github}` → callback → enlace de `Identity` y sesión; requiere `GOOGLE_*` / `GITHUB_*` en env (sin claves, redirección a login con `oauth_not_configured`). **Apple:** ruta presente; redirige a `apple_not_configured` (Sign in with Apple exige Service ID + JWT de cliente).
+- Workspace automático en el registro y tras OAuth si el usuario no tenía uno; seed con roles demo.
 - Dashboard con sidebar, command palette (Cmd/Ctrl+K), lista de proyectos y creación rápida.
 - Proyecto: compositor Plan/Construir, SSE de estado, aprobación de plan → run de construcción.
-- **Vista previa y sitio publicado con runtime React real (mismo pipeline):** el servidor empaqueta `src/App.tsx` con **esbuild** (React 19 incluido en el bundle), sirve HTML con CSP estricta y el iframe usa `sandbox="allow-scripts allow-same-origin"`. La ruta autenticada es `GET /api/v1/projects/:id/preview-frame`; la ruta pública compartida es `GET /api/public/sitio/:slug/frame`. La página `/sitio/[slug]` incrusta ese frame; el beacon de analítica sigue en la shell de la página.
-- Editor Monaco con guardado, edición visual mínima (fondo del `main`).
-- Comentarios con envío al agente; **resolver / reabrir** hilos vía `PATCH /api/v1/projects/:id/comments/:threadId`.
-- Publicación `POST .../publish`, **despublicar** `DELETE .../publish` (marca `unpublished`, borra dominios vinculados); slug y `liveUrl` coherentes.
-- Créditos: transacción **Serializable** + **reintentos** ante conflicto `P2034` (Prisma).
-- ZIP del proyecto, hallazgos de seguridad seed, checkout Stripe (endpoint; requiere claves).
+- **Vista previa y sitio publicado — mismo runtime ejecutable:** esbuild empaqueta **todos los archivos `.ts/.tsx/.js/.jsx` del proyecto** desde disco temporal (imports relativos entre archivos del repo resueltos). React/ReactDOM se resuelven desde el host. Rutas: `GET /api/v1/projects/:id/preview-frame` (auth) y `GET /api/public/sitio/:slug/frame` (público). `/sitio/[slug]` incrusta el frame; analítica en la shell.
+- **Publicar:** `POST .../publish` **falla 422** si el bundle no compila (`compilación_fallida` + detalles); solo entonces marca `live`. `DELETE .../publish` despublica.
+- Editor Monaco, edición visual mínima (fondo del `main`).
+- Comentarios + enviar al agente; **resolver/reabrir** con `PATCH .../comments/:threadId`.
+- **GitHub import:** `POST /api/v1/projects/:id/github/import` — descarga árbol del repo (API) con token en body o `GITHUB_IMPORT_TOKEN`; upsert en `ProjectFile`; actualiza `githubRepoFullName`. UI en pestaña Compartir.
+- Créditos: transacción Serializable + reintentos `P2034`.
+- ZIP, hallazgos seed, Stripe checkout (requiere claves).
 
 ## Limitaciones conocidas (honestas)
 
-- El bundle de preview/publicación **solo incluye `src/App.tsx` como entrada de usuario**; no empaqueta todo el árbol del proyecto ni dependencias arbitrarias del usuario. Es un runtime **real** para el patrón “una app en un archivo”, no un sustituto completo de Vite multi-archivo.
-- El stream SSE del run hace **polling** a la base (~500 ms); es simple para demos, no óptimo a escala.
-- OAuth social de servidor, 2FA, SSO, GitHub sync y conectores productivos siguen en la lista de pendientes.
+- El bundle **no** es Vite completo: no `node_modules` del proyecto usuario, no empaquetado de dependencias arbitrarias salvo React del host.
+- SSE de runs: polling ~500 ms.
+- Apple Sign In no operativo sin credenciales Apple.
+- Export/push a GitHub (escritura) no implementado; solo import.
 
 ## Pendiente / ampliación
 
-- OAuth real (Google/GitHub/Apple), 2FA TOTP/SMS, SSO OIDC/SAML.
-- Presencia WebSocket, carpetas UI, referrals reales, compartir/invitaciones completas.
-- Empaquetado multi-archivo (resolver imports entre `ProjectFile`), sandbox más duro si hace falta `allow-same-origin`.
-- Conectores GitHub OAuth + sync bidireccional completo.
-- Helm charts completos (aquí hay compose de producción de referencia + Traefik comentado).
+- 2FA, SSO, invitaciones por email, permisos de proyecto avanzados.
+- Push/sync bidireccional a GitHub.
+- Sandbox preview sin `allow-same-origin` si se exige aislamiento máximo.
+- Helm producción completo.

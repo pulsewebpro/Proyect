@@ -3,6 +3,7 @@ import { getSessionUser } from '@/lib/session';
 import { prisma } from '@amable/db';
 import { publishProjectSchema } from '@amable/shared';
 import { PublicationAudience, PublicationStatus } from '@prisma/client';
+import { bundleProjectFiles } from '@/server/preview-bundle';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -25,6 +26,19 @@ export async function POST(req: Request, ctx: Ctx) {
     parsed.data.audience === 'workspace' ? PublicationAudience.workspace : PublicationAudience.anyone;
   const slug = parsed.data.slug;
   const liveUrl = `${base}/sitio/${slug}`;
+
+  const files = await prisma.projectFile.findMany({
+    where: { projectId },
+    select: { path: true, content: true },
+  });
+  const build = await bundleProjectFiles(files);
+  if (build.errors.length) {
+    return NextResponse.json(
+      { error: 'compilación_fallida', details: build.errors },
+      { status: 422 }
+    );
+  }
+
   const pub = await prisma.publication.upsert({
     where: { projectId_slug: { projectId, slug } },
     create: {

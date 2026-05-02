@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@amable/db';
-import { bundleAppForPreview, previewShellHtml } from '@/server/preview-bundle';
+import { bundleProjectFiles, previewShellHtml } from '@/server/preview-bundle';
 
 type Ctx = { params: Promise<{ slug: string }> };
 
@@ -11,11 +11,11 @@ export async function GET(_req: Request, ctx: Ctx) {
     include: { project: true },
   });
   if (!pub) return new NextResponse('No publicado', { status: 404 });
-  const file = await prisma.projectFile.findFirst({
-    where: { projectId: pub.projectId, path: 'src/App.tsx' },
+  const rows = await prisma.projectFile.findMany({
+    where: { projectId: pub.projectId },
+    select: { path: true, content: true },
   });
-  const source = file?.content ?? 'export default function App(){return null}';
-  const { js, errors } = await bundleAppForPreview(source);
+  const { js, errors } = await bundleProjectFiles(rows);
   if (errors.length) {
     const errHtml = previewShellHtml(
       `document.body.innerHTML='<pre style="padding:16px;white-space:pre-wrap;font:12px monospace;color:#f87171">'+${JSON.stringify(errors.join('\n'))}+'</pre>';`,
