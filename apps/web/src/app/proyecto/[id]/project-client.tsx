@@ -29,6 +29,25 @@ const Editor = dynamic(() => import('./monaco-editor'), { ssr: false });
 
 type Project = { id: string; name: string; slug: string; workspaceId: string };
 
+type ProjectLife = {
+  fingerprint: string;
+  fileCount: number;
+  totalBytes: number;
+  filesUpdatedAt: string | null;
+  runsDone: number;
+  lastRun: {
+    id: string;
+    mode: string;
+    status: string;
+    outputTemplate: string | null;
+    creditsUsed: number;
+    finishedAt: string | null;
+    createdAt: string;
+    errorMessage: string | null;
+  } | null;
+  lastEventAt: string | null;
+};
+
 export default function ProyectoPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -61,6 +80,7 @@ export default function ProyectoPage() {
   const [pubSlug, setPubSlug] = useState('');
   const [pubAudience, setPubAudience] = useState<'workspace' | 'anyone'>('anyone');
   const [runSecurityCheck, setRunSecurityCheck] = useState(true);
+  const [life, setLife] = useState<ProjectLife | null>(null);
   const esRef = useRef<EventSource | null>(null);
 
   const activeFile = useMemo(
@@ -68,7 +88,29 @@ export default function ProyectoPage() {
     [files, activePath]
   );
 
-  const previewKey = useMemo(() => files.map((f) => `${f.path}:${f.content.length}`).join('|'), [files]);
+  const previewKey = useMemo(
+    () => `${files.map((f) => `${f.path}:${f.content.length}`).join('|')}|${life?.fingerprint ?? ''}`,
+    [files, life?.fingerprint]
+  );
+
+  const lifeStrip = useMemo(() => {
+    if (!life) return null;
+    const t = life.lastEventAt ? new Date(life.lastEventAt) : null;
+    const when = t && !Number.isNaN(t.getTime()) ? t.toLocaleString('es', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+    const kb = life.totalBytes >= 1024 ? `${(life.totalBytes / 1024).toFixed(1)} KB` : `${life.totalBytes} B`;
+    const tpl = life.lastRun?.outputTemplate ?? '—';
+    const mode = life.lastRun?.mode ?? '—';
+    const credits = life.lastRun != null ? String(life.lastRun.creditsUsed) : '—';
+    const status = life.lastRun?.status ?? '—';
+    return { when, kb, tpl, mode, credits, status };
+  }, [life]);
+
+  const loadLife = useCallback(async () => {
+    const res = await fetch(`/api/v1/projects/${projectId}/life`);
+    if (!res.ok) return;
+    const data = (await res.json()) as ProjectLife;
+    setLife(data);
+  }, [projectId]);
 
   const loadProject = useCallback(async () => {
     const res = await fetch(`/api/v1/projects/${projectId}`);
@@ -114,7 +156,8 @@ export default function ProyectoPage() {
     void loadComments();
     void loadAnalytics();
     void loadSpec();
-  }, [loadProject, loadFiles, loadComments, loadAnalytics, loadSpec]);
+    void loadLife();
+  }, [loadProject, loadFiles, loadComments, loadAnalytics, loadSpec, loadLife]);
 
   useEffect(() => {
     if (tab === 'analytics') void loadAnalytics();
@@ -137,10 +180,11 @@ export default function ProyectoPage() {
         void loadFiles();
         void loadProject();
         void loadSpec();
+        void loadLife();
       }
     };
     return () => es.close();
-  }, [runId, projectId, loadFiles, loadProject, loadSpec]);
+  }, [runId, projectId, loadFiles, loadProject, loadSpec, loadLife]);
 
   async function startRun() {
     const res = await fetch(`/api/v1/projects/${projectId}/runs`, {
@@ -171,6 +215,7 @@ export default function ProyectoPage() {
       body: JSON.stringify({ path: activePath, content }),
     });
     void loadFiles();
+    void loadLife();
   }
 
   async function applyVisual() {
@@ -211,6 +256,7 @@ export default function ProyectoPage() {
     const data = await res.json();
     alert(`Publicado: ${data.targetUrl}`);
     setPubOpen(false);
+    void loadLife();
   }
 
   async function addComment() {
@@ -275,6 +321,22 @@ export default function ProyectoPage() {
           </Button>
         </div>
       </header>
+      {life && lifeStrip && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-white/10 bg-panel-2/40 px-4 py-2 text-[11px] text-muted">
+          <span className="font-medium uppercase tracking-wide text-fg">Versión viva</span>
+          <span title="Cambia con cada run o edición de archivos: preview y publicación leen el mismo árbol">
+            Huella <code className="text-accent-6">{life.fingerprint}</code>
+          </span>
+          <span>{life.runsDone} runs completados</span>
+          <span>{life.fileCount} archivos · {lifeStrip.kb}</span>
+          <span>Último evento {lifeStrip.when}</span>
+          <span>
+            Último run: {lifeStrip.mode}
+            {life.lastRun?.outputTemplate ? ` · ${lifeStrip.tpl}` : ''} · {lifeStrip.credits} cr ·{' '}
+            <span className={life.lastRun?.status === 'failed' ? 'text-red-400' : 'text-fg'}>{lifeStrip.status}</span>
+          </span>
+        </div>
+      )}
       <div className="grid flex-1 gap-0 lg:grid-cols-2">
         <div className="border-b border-white/10 p-4 lg:border-b-0 lg:border-r">
           <p className="mb-3 rounded-[var(--radius)] border border-white/10 bg-panel-2/80 px-3 py-2 text-xs leading-relaxed text-muted">
