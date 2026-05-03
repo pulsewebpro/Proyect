@@ -22,7 +22,7 @@
 ## Salud y monitorización
 
 - **Público:** `GET /api/health` — comprueba base de datos; Redis y LLM opcionales según `HEALTH_STRICT`.
-- **Cron:** `GET /api/cron/cleanup-password-tokens` con header `Authorization: Bearer $CRON_SECRET` (configurado en `vercel.json` a las 04:00 UTC).
+- **Cron:** `GET /api/cron/cleanup-password-tokens` — en Vercel, al definir `CRON_SECRET` en el proyecto, el Cron Jobs envía `Authorization: Bearer <CRON_SECRET>` automáticamente (ver `vercel.json`, 04:00 UTC).
 
 ## Copias de seguridad
 
