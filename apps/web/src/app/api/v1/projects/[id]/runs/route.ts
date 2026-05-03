@@ -6,6 +6,7 @@ import { RunMode, RunStatus } from '@prisma/client';
 import { getRunQueue } from '@/lib/queue';
 import { getCreditBalance } from '@amable/credits';
 import { checkRateLimit, clientIpFromRequest } from '@/lib/rate-limit';
+import { detectOutputTemplateFromPrompt, parseOutputTemplate } from '@amable/ai';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -34,12 +35,15 @@ export async function POST(req: Request, ctx: Ctx) {
   const parsed = createRunSchema.safeParse(json);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   const mode = parsed.data.mode === 'plan' ? RunMode.plan : RunMode.build;
+  const outputTemplate =
+    parseOutputTemplate(parsed.data.outputTemplate ?? null) ?? detectOutputTemplateFromPrompt(parsed.data.prompt);
   const run = await prisma.run.create({
     data: {
       projectId,
       mode,
       status: RunStatus.queued,
       prompt: parsed.data.prompt,
+      outputTemplate,
     },
   });
   try {

@@ -297,6 +297,8 @@ model Run {
   projectId        String
   mode             RunMode
   status           RunStatus @default(queued)
+  /// Premium generator template: bookings | saas_dashboard | landing_auth
+  outputTemplate   String?
   prompt           String    @db.Text
   creditsUsed      Decimal   @default(0) @db.Decimal(10, 2)
   provider         String?

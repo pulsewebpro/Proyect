@@ -30,6 +30,7 @@ export async function POST(_req: Request, ctx: Ctx) {
       mode: RunMode.build,
       status: RunStatus.queued,
       prompt: `Ejecutar plan aprobado:\n${run.planDocument.content}`,
+      outputTemplate: run.outputTemplate,
     },
   });
   try {

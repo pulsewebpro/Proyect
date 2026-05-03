@@ -32,6 +32,8 @@ Producción con IA real: al menos una de `OPENAI_API_KEY` o `ANTHROPIC_API_KEY`.
 
 Opcional: `GITHUB_IMPORT_TOKEN`, OAuth Google/GitHub, `RESEND_API_KEY` (recuperación de contraseña), `GITHUB_*` para import/export.
 
+- **Plantillas premium** (selector en el proyecto): `bookings` (reservas + panel + tabla), `saas_dashboard` (CRM con leads), `landing_auth` (landing + lista de espera pública + auth). El mock local y el LLM (con keys) siguen las mismas reglas visuales; la plantilla se guarda en el run y en `spec.metadata.template`.
+
 ## Qué funciona
 
 - Registro / login, workspace, crear proyecto, editor y vista previa.

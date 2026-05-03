@@ -23,6 +23,8 @@ export const createProjectSchema = z.object({
 export const createRunSchema = z.object({
   mode: z.enum(['plan', 'build']),
   prompt: z.string().min(1).max(16000),
+  /** Premium generator template (optional; inferred from prompt if omitted). */
+  outputTemplate: z.enum(['bookings', 'saas_dashboard', 'landing_auth']).optional(),
   attachments: z.array(z.string().url()).optional().default([]),
   references: z.array(z.string().cuid()).optional().default([]),
   providerPreference: z.enum(['auto', 'anthropic', 'openai']).optional().default('auto'),

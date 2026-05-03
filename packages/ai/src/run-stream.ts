@@ -5,6 +5,27 @@ import { extractJsonObject } from './parse-json-block';
 import { llmPlanOutputSchema, llmBuildOutputSchema } from './product-spec-schema';
 import { openaiChatCompletion } from './llm-openai';
 import { anthropicMessages } from './llm-anthropic';
+import { detectOutputTemplateFromPrompt, parseOutputTemplate, type OutputTemplateId } from './premium/output-templates';
+import { premiumBuildRules, premiumPlanRules } from './premium/llm-template-rules';
+
+function resolveTemplateId(args: {
+  outputTemplate?: string | null;
+  prompt: string;
+  productSpecSummary?: string;
+}): OutputTemplateId {
+  const fromField = parseOutputTemplate(args.outputTemplate);
+  if (fromField) return fromField;
+  if (args.productSpecSummary) {
+    try {
+      const j = JSON.parse(args.productSpecSummary) as { metadata?: { template?: string } };
+      const t = parseOutputTemplate(j.metadata?.template ?? null);
+      if (t) return t;
+    } catch {
+      /* */
+    }
+  }
+  return detectOutputTemplateFromPrompt(args.prompt);
+}
 
 const PLAN_SYSTEM = `Eres un arquitecto de producto. Devuelve SOLO un JSON válido con esta forma exacta:
 {
@@ -58,6 +79,7 @@ export async function* createRunStream(input: {
   mode: 'plan' | 'build';
   prompt: string;
   productSpecSummary?: string;
+  outputTemplate?: string | null;
   env?: LlmEnv;
 }): AsyncGenerator<StreamEvent> {
   const env: LlmEnv = input.env ?? {
@@ -67,6 +89,12 @@ export async function* createRunStream(input: {
     anthropicModel: process.env.ANTHROPIC_MODEL,
     nodeEnv: process.env.NODE_ENV,
   };
+
+  const templateId = resolveTemplateId({
+    outputTemplate: input.outputTemplate,
+    prompt: input.prompt,
+    productSpecSummary: input.productSpecSummary,
+  });
 
   const useLlm = hasAnyLlmKey(env);
   if (!useLlm) {
@@ -78,7 +106,7 @@ export async function* createRunStream(input: {
       };
       return;
     }
-    yield* mockRunStream({ mode: input.mode, prompt: input.prompt });
+    yield* mockRunStream({ mode: input.mode, prompt: input.prompt, outputTemplate: templateId });
     return;
   }
 
@@ -88,7 +116,12 @@ export async function* createRunStream(input: {
   try {
     if (input.mode === 'plan') {
       yield { type: 'step', name: 'Especificación de producto', status: 'running' };
-      const raw = await callLlmJson(env, PLAN_SYSTEM, `Pedido del usuario:\n${input.prompt}`);
+      const planSystem = PLAN_SYSTEM + premiumPlanRules(templateId);
+      const raw = await callLlmJson(
+        env,
+        planSystem,
+        `Plantilla sugerida: ${templateId}\nPedido del usuario:\n${input.prompt}`
+      );
       const parsed = llmPlanOutputSchema.safeParse(extractJsonObject(raw));
       if (!parsed.success) {
         yield { type: 'error', message: `Spec inválida: ${parsed.error.message}` };
@@ -109,7 +142,8 @@ export async function* createRunStream(input: {
       input.productSpecSummary != null
         ? `ProductSpec (JSON):\n${input.productSpecSummary}\n\nTarea:\n${input.prompt}`
         : input.prompt;
-    const raw = await callLlmJson(env, BUILD_SYSTEM, userPrompt);
+    const buildSystem = BUILD_SYSTEM + premiumBuildRules(templateId);
+    const raw = await callLlmJson(env, buildSystem, userPrompt);
     const parsed = llmBuildOutputSchema.safeParse(extractJsonObject(raw));
     if (!parsed.success) {
       yield { type: 'error', message: `Salida de build inválida: ${parsed.error.message}` };

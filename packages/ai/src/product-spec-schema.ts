@@ -38,6 +38,7 @@ export const productSpecSchema = z.object({
   }),
   integrations: z.array(z.string()).default([]),
   permissions: z.array(z.string()).default([]),
+  metadata: z.record(z.unknown()).optional(),
 });
 
 export type ProductSpec = z.infer<typeof productSpecSchema>;

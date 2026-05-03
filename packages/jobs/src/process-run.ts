@@ -92,6 +92,7 @@ export async function processRun(runId: string) {
       mode,
       prompt: run.prompt,
       productSpecSummary: mode === 'build' ? productSpecSummary : undefined,
+      outputTemplate: run.outputTemplate,
     })) {
       if (ev.type === 'step') {
         const existing = await prisma.runStep.findFirst({

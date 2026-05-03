@@ -26,14 +26,39 @@ export async function GET(req: Request, ctx: Ctx) {
 export async function POST(req: Request, ctx: Ctx) {
   const projectId = await resolveProjectIdForGeneratedApi(req);
   if (!projectId) return NextResponse.json({ error: 'contexto_requerido' }, { status: 400 });
-  const actor = await getGeneratedAppUser(projectId);
-  if (!actor) return NextResponse.json({ error: 'auth_requerida' }, { status: 401 });
   const { entity: raw } = await ctx.params;
   const entity = entityName.safeParse(raw);
   if (!entity.success) return NextResponse.json({ error: 'entidad_inválida' }, { status: 400 });
+  const actor = await getGeneratedAppUser(projectId);
   const body = await req.json().catch(() => null);
   const data = z.record(z.unknown()).safeParse(body);
   if (!data.success) return NextResponse.json({ error: data.error.flatten() }, { status: 400 });
+
+  /** Public waitlist join (landing template) — no session required */
+  if (entity.data === 'WaitlistEntry') {
+    const wl = z
+      .object({
+        name: z.string().min(1).max(120),
+        email: z.string().email().max(254),
+        role: z.string().max(64).optional(),
+      })
+      .safeParse(data.data);
+    if (!wl.success) return NextResponse.json({ error: wl.error.flatten() }, { status: 400 });
+    const row = await prisma.generatedRow.create({
+      data: {
+        projectId,
+        entity: 'WaitlistEntry',
+        data: {
+          ...wl.data,
+          _createdBy: actor?.userId ?? 'public_waitlist',
+          _source: 'public_waitlist',
+        } as Prisma.InputJsonValue,
+      },
+    });
+    return NextResponse.json({ id: row.id, ...((row.data as object) ?? {}) });
+  }
+
+  if (!actor) return NextResponse.json({ error: 'auth_requerida' }, { status: 401 });
   const row = await prisma.generatedRow.create({
     data: { projectId, entity: entity.data, data: { ...data.data, _createdBy: actor.userId } as Prisma.InputJsonValue },
   });

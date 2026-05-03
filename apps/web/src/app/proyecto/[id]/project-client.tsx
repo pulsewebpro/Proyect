@@ -36,6 +36,7 @@ export default function ProyectoPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [tab, setTab] = useState('preview');
   const [mode, setMode] = useState<'plan' | 'build'>('build');
+  const [outputTemplate, setOutputTemplate] = useState<'bookings' | 'saas_dashboard' | 'landing_auth'>('bookings');
   const [prompt, setPrompt] = useState('');
   const [runId, setRunId] = useState<string | null>(null);
   const [runStatus, setRunStatus] = useState<string>('');
@@ -145,7 +146,7 @@ export default function ProyectoPage() {
     const res = await fetch(`/api/v1/projects/${projectId}/runs`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode, prompt }),
+      body: JSON.stringify({ mode, prompt, outputTemplate }),
     });
     if (!res.ok) {
       const j = await res.json().catch(() => ({}));
@@ -293,6 +294,18 @@ export default function ProyectoPage() {
                 Construir
               </button>
             </div>
+            <label className="flex items-center gap-2 text-xs text-muted">
+              <span className="whitespace-nowrap">Plantilla</span>
+              <select
+                className="rounded-md border border-white/10 bg-panel px-2 py-1.5 text-xs text-fg"
+                value={outputTemplate}
+                onChange={(e) => setOutputTemplate(e.target.value as typeof outputTemplate)}
+              >
+                <option value="bookings">Reservas + panel</option>
+                <option value="saas_dashboard">Dashboard SaaS</option>
+                <option value="landing_auth">Landing + auth</option>
+              </select>
+            </label>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="outline" size="sm" type="button" disabled>
