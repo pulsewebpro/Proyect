@@ -2,12 +2,30 @@ import Link from 'next/link';
 import { Button } from '@amable/ui';
 
 const sections = [
-  'Mira cómo cobra vida',
-  'Itera y publica',
-  'Plantillas',
-  'Seguridad',
-  'Precios',
-  'Preguntas frecuentes',
+  {
+    title: 'Primera versión, lista de verdad',
+    body: 'Plan y build generan una app web publicable (preview y URL usan el mismo pipeline). No es un juguete: es tu primer entregable sólido.',
+  },
+  {
+    title: 'Mejora con créditos',
+    body: 'Cada run consume créditos y avanza el producto: copy, pantallas, datos y UI van refinándose sin empezar de cero.',
+  },
+  {
+    title: 'Evolución visual en vivo',
+    body: 'Ves el resultado en la vista previa y en publicación; cada iteración acerca la interfaz a lo que pediste, con plantillas premium como base.',
+  },
+  {
+    title: 'Plantillas premium',
+    body: 'Reservas, dashboard SaaS o landing con auth: arquetipos exigentes para que el primer resultado ya parezca producto, no plantilla genérica.',
+  },
+  {
+    title: 'Publicación y analítica',
+    body: 'URL pública, export ZIP y GitHub cuando toque; métricas básicas reales sobre el tráfico del sitio publicado.',
+  },
+  {
+    title: 'Hecho para cobrar',
+    body: 'Pensado para equipos que venden software web: entregas rápidas, iteración medible y control del alcance por plantilla.',
+  },
 ];
 
 export default function LandingPage() {
@@ -26,12 +44,13 @@ export default function LandingPage() {
       </header>
       <main className="mx-auto max-w-6xl px-6 pb-24">
         <section className="py-20 text-center">
-          <p className="mb-4 text-sm text-muted">De la idea al sitio publicado, con control y transparencia</p>
+          <p className="mb-4 text-sm text-muted">Modo producto: plataformas web, no pantallas sueltas</p>
           <h1 className="mx-auto max-w-3xl text-balance text-4xl font-semibold tracking-tight sm:text-5xl">
-            Empieza con una idea
+            De la idea a una plataforma web que puedes publicar
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-pretty text-lg text-muted">
-            Describe la app o sitio que quieres crear o arrastra capturas y documentos
+            El primer entregable ya es usable y coherente; con créditos sigues iterando y ves la interfaz evolucionar en preview y en la URL
+            viva, sin truco de “demo” aparte del producto.
           </p>
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
             <Button size="lg" asChild>
@@ -44,11 +63,9 @@ export default function LandingPage() {
         </section>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {sections.map((s) => (
-            <div key={s} className="rounded-[var(--radius)] border border-white/10 bg-panel p-6 shadow-panel">
-              <h2 className="text-lg font-semibold">{s}</h2>
-              <p className="mt-2 text-sm text-muted">
-                Contenido orientado a conversión. Sin copiar textos de terceros.
-              </p>
+            <div key={s.title} className="rounded-[var(--radius)] border border-white/10 bg-panel p-6 shadow-panel">
+              <h2 className="text-lg font-semibold">{s.title}</h2>
+              <p className="mt-2 text-sm text-muted">{s.body}</p>
             </div>
           ))}
         </div>

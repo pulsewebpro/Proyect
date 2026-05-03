@@ -122,7 +122,8 @@ export default function DashboardPage() {
           ))}
         </nav>
         <p className="mt-6 px-3 text-xs text-muted">
-          Facturación, invitaciones por correo y notificaciones no están en esta versión.
+          Cada proyecto es una plataforma web que publicas e iteras con créditos: primera versión sólida, luego refinamiento visual y
+          funcional en cada run.
         </p>
       </aside>
       <main className="flex-1">
@@ -139,9 +140,10 @@ export default function DashboardPage() {
         </header>
         <div className="mx-auto max-w-5xl px-4 py-10 lg:px-8">
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
-            <h1 className="text-2xl font-semibold tracking-tight">Describe lo que quieres crear…</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">Nueva plataforma web</h1>
             <p className="mt-2 text-sm text-muted">
-              Composer rápido: crea un proyecto y abre el editor completo.
+              Abre el compositor: plan, build, preview y publicación comparten el mismo motor. Los créditos miden cada mejora hasta el
+              resultado que quieres vender.
             </p>
             <Card className="mt-8">
               <CardContent className="space-y-3 p-5">

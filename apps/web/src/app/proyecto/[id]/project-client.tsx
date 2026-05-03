@@ -277,6 +277,12 @@ export default function ProyectoPage() {
       </header>
       <div className="grid flex-1 gap-0 lg:grid-cols-2">
         <div className="border-b border-white/10 p-4 lg:border-b-0 lg:border-r">
+          <p className="mb-3 rounded-[var(--radius)] border border-white/10 bg-panel-2/80 px-3 py-2 text-xs leading-relaxed text-muted">
+            <span className="font-medium text-fg">Cómo construimos lo que vendes:</span> la primera salida ya es una app publicable
+            (misma build en preview y en la URL). Cada run con créditos refina código y UI; elige plantilla para anclar el tipo de
+            plataforma. El objetivo es el mismo que en los mejores AI builders: primer entregable sólido, luego refinamiento visible en
+            cada iteración.
+          </p>
           <div className="mb-3 flex flex-wrap gap-2">
             <div className="inline-flex rounded-[var(--radius)] bg-panel-2 p-1">
               <button

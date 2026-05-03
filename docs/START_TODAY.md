@@ -1,4 +1,6 @@
-# Arrancar hoy (MVP)
+# Arrancar hoy (producto)
+
+Modo **plataforma**: el primer entregable es una app web publicable (preview = publicación); los **créditos** miden cada run de mejora hasta el nivel visual y funcional que quieras vender.
 
 ## Comandos
 
