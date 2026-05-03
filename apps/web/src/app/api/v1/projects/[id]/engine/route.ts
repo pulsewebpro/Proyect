@@ -5,7 +5,7 @@ import { getProductEngineStateForProject } from '@/server/product-engine-query';
 
 type Ctx = { params: Promise<{ id: string }> };
 
-/** @deprecated Use GET /api/v1/projects/[id]/engine — same data subset for backward compatibility. */
+/** Definitive product state: same tree for preview and publish, runs, credits on project, live publication. */
 export async function GET(_req: Request, ctx: Ctx) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
@@ -24,19 +24,13 @@ export async function GET(_req: Request, ctx: Ctx) {
   if (!ok) return NextResponse.json({ error: 'No encontrado' }, { status: 404 });
 
   try {
-    const s = await getProductEngineStateForProject(projectId);
-    return NextResponse.json({
-      fingerprint: s.fingerprint,
-      fileCount: s.fileCount,
-      totalBytes: s.totalBytes,
-      filesUpdatedAt: s.filesUpdatedAt,
-      runsDone: s.runsDone,
-      lastRun: s.lastRun,
-      lastEventAt: s.lastEventAt,
-      creditsConsumedApprox: s.creditsConsumedOnProject,
-      engine: '/api/v1/projects/' + projectId + '/engine',
-    });
-  } catch {
+    const state = await getProductEngineStateForProject(projectId);
+    return NextResponse.json(state);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'error';
+    if (msg === 'project_not_found') {
+      return NextResponse.json({ error: 'No encontrado' }, { status: 404 });
+    }
     return NextResponse.json({ error: 'engine_error' }, { status: 500 });
   }
 }

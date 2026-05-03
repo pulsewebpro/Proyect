@@ -2,6 +2,8 @@
 
 Modo **plataforma**: el primer entregable es una app web publicable (preview = publicación); los **créditos** miden cada run de mejora hasta el nivel visual y funcional que quieras vender.
 
+**Estado del motor (contrato único):** `GET /api/v1/projects/<id>/engine` devuelve huella, archivos, runs, créditos consumidos en el proyecto y publicación live. La UI del proyecto lo usa para la barra “Motor del producto”. `GET .../life` queda como alias compatible.
+
 ## Comandos
 
 Desde la raíz del monorepo (con Node 20+ y pnpm 9):

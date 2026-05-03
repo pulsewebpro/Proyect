@@ -209,7 +209,7 @@ export async function processRun(runId: string) {
       await consumeCredits({
         workspaceId: run.project.workspaceId,
         amount: planAmount,
-        reason: `run:${runId}`,
+        reason: `run:${runId}:${run.projectId}`,
         runId,
       });
     } else {
@@ -221,7 +221,7 @@ export async function processRun(runId: string) {
       const res = await consumeCredits({
         workspaceId: run.project.workspaceId,
         amount,
-        reason: `run:${runId}`,
+        reason: `run:${runId}:${run.projectId}`,
         runId,
       });
       if (!res.ok) {
