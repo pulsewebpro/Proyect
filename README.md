@@ -1,6 +1,6 @@
 # Amable Studio
 
-Monorepo **Amable Studio**: plataforma SaaS web (es-ES) inspirada en el flujo *idea → prompt → vista previa → publicación*, con identidad visual parametrizable y sin marca de terceros.
+Monorepo **Amable Studio**: plataforma SaaS web (es-ES) en la **misma categoría de producto** que los AI web builders de referencia: *idea → plan/spec → código → vista previa real → publicación → URL → datos y auth de la app generada → export → iteración con créditos*. Ver [docs/BUILDER_PARITY.md](./docs/BUILDER_PARITY.md) y la ruta `/paridad` en la app para el checklist público.
 
 ## Requisitos
 

@@ -59,6 +59,9 @@ export default function LandingPage() {
             <Button size="lg" variant="secondary" asChild>
               <Link href="/iniciar-sesion">Iniciar sesión</Link>
             </Button>
+            <Button size="lg" variant="outline" asChild>
+              <Link href="/paridad">Paridad con builders</Link>
+            </Button>
           </div>
         </section>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

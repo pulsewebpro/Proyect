@@ -51,6 +51,13 @@ Opcional: `GITHUB_IMPORT_TOKEN`, OAuth Google/GitHub, `RESEND_API_KEY` (recupera
 - Secretos de integraciones en BD sin cifrado adicional (ver `docs/architecture.md`).
 - Dominios custom y SSO: no el núcleo de este MVP.
 
+## Paridad con AI builders (Lovable-class)
+
+Para decir **sí, mismo flujo profesional** (prompt → spec → código → preview = publicación → URL → datos → export → créditos) con límites explícitos fuera del núcleo:
+
+- **[BUILDER_PARITY.md](./BUILDER_PARITY.md)**
+- En la app: **`/paridad`**
+
 ## Probar el flujo automático
 
 Con Postgres y Redis levantados:
