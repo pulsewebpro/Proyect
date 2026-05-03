@@ -1,6 +1,12 @@
 import { prisma } from '@amable/db';
 
 export async function resolveProjectIdForGeneratedApi(req: Request): Promise<string | null> {
+  const headerId = req.headers.get('x-amable-project-id')?.trim();
+  if (headerId) {
+    const ok = await prisma.project.findUnique({ where: { id: headerId }, select: { id: true } });
+    return ok?.id ?? null;
+  }
+
   const ref = req.headers.get('referer') ?? '';
   if (!ref) return null;
   try {
@@ -13,6 +19,16 @@ export async function resolveProjectIdForGeneratedApi(req: Request): Promise<str
       });
       return pub?.projectId ?? null;
     }
+    const publicFrame = u.pathname.match(/^\/api\/public\/sitio\/([^/]+)\/(?:frame|vite\/)/);
+    if (publicFrame?.[1]) {
+      const pub = await prisma.publication.findFirst({
+        where: { slug: publicFrame[1], status: 'live' },
+        select: { projectId: true },
+      });
+      return pub?.projectId ?? null;
+    }
+    const previewFrame = u.pathname.match(/^\/api\/v1\/projects\/([^/]+)\/(?:preview-frame|preview-vite\/)/);
+    if (previewFrame?.[1]) return previewFrame[1];
     const proj = u.pathname.match(/^\/proyecto\/([^/]+)/);
     return proj?.[1] ?? null;
   } catch {

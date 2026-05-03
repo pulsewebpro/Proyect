@@ -1,4 +1,5 @@
 import type { StreamEvent } from './stream-types';
+import { mockViteProjectFiles } from './mock-vite-skeleton';
 
 export type { StreamEvent };
 
@@ -52,11 +53,9 @@ export async function* mockRunStream(input: {
 
   yield { type: 'step', name: 'Generando cambios', status: 'running' };
   await delay(500);
-  yield {
-    type: 'file',
-    path: 'src/App.tsx',
-    content: `export const greeting = "${input.prompt.slice(0, 40).replace(/"/g, '')}";\n\nexport default function App() {\n  return (\n    <main style={{ fontFamily: 'system-ui', padding: 24 }}>\n      <h1>Vista previa Amable Studio</h1>\n      <p>{greeting}</p>\n    </main>\n  );\n}\n`,
-  };
+  for (const f of mockViteProjectFiles(input.prompt)) {
+    yield { type: 'file', path: f.path, content: f.content };
+  }
   yield { type: 'step', name: 'Generando cambios', status: 'done' };
   yield { type: 'step', name: 'Probando', status: 'running' };
   await delay(300);
