@@ -22,7 +22,7 @@ export const createProjectSchema = z.object({
 
 export const createRunSchema = z.object({
   mode: z.enum(['plan', 'build']),
-  prompt: z.string().min(1).max(32000),
+  prompt: z.string().min(1).max(16000),
   attachments: z.array(z.string().url()).optional().default([]),
   references: z.array(z.string().cuid()).optional().default([]),
   providerPreference: z.enum(['auto', 'anthropic', 'openai']).optional().default('auto'),

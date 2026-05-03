@@ -40,6 +40,7 @@ async function main() {
   await prisma.invoice.deleteMany();
   await prisma.workspaceMember.deleteMany();
   await prisma.notification.deleteMany();
+  await prisma.passwordResetToken.deleteMany();
   await prisma.identity.deleteMany();
   await prisma.userPreference.deleteMany();
   await prisma.securityFinding.deleteMany();

@@ -5,6 +5,7 @@ import { hashPassword, signSession } from '@amable/auth';
 import { WorkspacePlan, WorkspaceRole, IdentityProvider, CreditEntryType } from '@prisma/client';
 import { cookies } from 'next/headers';
 import { SESSION_COOKIE_NAME, sessionCookieOptions } from '@/lib/cookies';
+import { checkRateLimit, clientIpFromRequest } from '@/lib/rate-limit';
 
 const bodySchema = z.object({
   email: z.string().email(),
@@ -12,7 +13,21 @@ const bodySchema = z.object({
   name: z.string().min(1).max(80).optional(),
 });
 
+export async function GET() {
+  return NextResponse.json({
+    registrationOpen: process.env.REGISTRATION_OPEN !== '0',
+  });
+}
+
 export async function POST(req: Request) {
+  if (process.env.REGISTRATION_OPEN === '0') {
+    return NextResponse.json({ error: 'El registro público está cerrado temporalmente.' }, { status: 403 });
+  }
+  const ip = clientIpFromRequest(req);
+  const rl = checkRateLimit(`reg:${ip}`, 10, 60 * 60 * 1000);
+  if (!rl.ok) {
+    return NextResponse.json({ error: 'Demasiados registros desde esta red. Inténtalo más tarde.' }, { status: 429 });
+  }
   const json = await req.json().catch(() => null);
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) {

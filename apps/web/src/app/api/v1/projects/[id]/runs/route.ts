@@ -5,6 +5,7 @@ import { createRunSchema } from '@amable/shared';
 import { RunMode, RunStatus } from '@prisma/client';
 import { getRunQueue } from '@/lib/queue';
 import { getCreditBalance } from '@amable/credits';
+import { checkRateLimit, clientIpFromRequest } from '@/lib/rate-limit';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -20,6 +21,11 @@ export async function POST(req: Request, ctx: Ctx) {
     include: { workspace: true },
   });
   if (!project) return NextResponse.json({ error: 'Sin permiso' }, { status: 403 });
+  const ip = clientIpFromRequest(req);
+  const rl = checkRateLimit(`run:${projectId}:${ip}`, 20, 60 * 60 * 1000);
+  if (!rl.ok) {
+    return NextResponse.json({ error: 'Límite de ejecuciones por hora. Espera o contacta soporte.' }, { status: 429 });
+  }
   const balance = await getCreditBalance(project.workspaceId);
   if (balance < 1) {
     return NextResponse.json({ error: 'Créditos insuficientes' }, { status: 402 });

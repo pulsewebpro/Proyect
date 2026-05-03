@@ -26,7 +26,7 @@ export default function LandingPage() {
       </header>
       <main className="mx-auto max-w-6xl px-6 pb-24">
         <section className="py-20 text-center">
-          <p className="mb-4 text-sm text-muted">Producto de demostración — identidad parametrizable</p>
+          <p className="mb-4 text-sm text-muted">De la idea al sitio publicado, con control y transparencia</p>
           <h1 className="mx-auto max-w-3xl text-balance text-4xl font-semibold tracking-tight sm:text-5xl">
             Empieza con una idea
           </h1>
@@ -52,6 +52,21 @@ export default function LandingPage() {
             </div>
           ))}
         </div>
+        <section className="border-t border-white/10 py-12 text-center text-sm text-muted">
+          <p>
+            <Link className="text-accent-6 underline-offset-4 hover:underline" href="/privacidad">
+              Privacidad
+            </Link>
+            {' · '}
+            <Link className="text-accent-6 underline-offset-4 hover:underline" href="/terminos">
+              Términos
+            </Link>
+            {' · '}
+            <Link className="text-accent-6 underline-offset-4 hover:underline" href="/cookies">
+              Cookies
+            </Link>
+          </p>
+        </section>
       </main>
     </div>
   );

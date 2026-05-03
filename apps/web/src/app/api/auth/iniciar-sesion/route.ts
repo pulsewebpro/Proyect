@@ -4,6 +4,7 @@ import { prisma } from '@amable/db';
 import { verifyPassword, signSession } from '@amable/auth';
 import { cookies } from 'next/headers';
 import { SESSION_COOKIE_NAME, sessionCookieOptions } from '@/lib/cookies';
+import { checkRateLimit, clientIpFromRequest } from '@/lib/rate-limit';
 
 const bodySchema = z.object({
   email: z.string().email(),
@@ -11,6 +12,11 @@ const bodySchema = z.object({
 });
 
 export async function POST(req: Request) {
+  const ip = clientIpFromRequest(req);
+  const rl = checkRateLimit(`login:${ip}`, 30, 60 * 60 * 1000);
+  if (!rl.ok) {
+    return NextResponse.json({ error: 'Demasiados intentos. Espera unos minutos.' }, { status: 429 });
+  }
   const json = await req.json().catch(() => null);
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 });

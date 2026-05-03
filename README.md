@@ -32,7 +32,7 @@ Abre `http://localhost:3000`. Usuarios demo tras el seed: `owner@demo.amable` / 
 | `pnpm test:e2e` | Playwright (requiere web + DB) |
 | `pnpm db:seed` | Ejecuta `prisma db seed` |
 | `pnpm openapi` | Genera `apps/web/public/openapi.json` y copia a `docs/screens/openapi.json` |
-| `pnpm screenshots` | Captura `docs/screens/landing.png` (servidor en marcha; usa Chrome del sistema) |
+| `bash scripts/db-backup.sh ./backups` | Volcado SQL comprimido (requiere `pg_dump` y `DATABASE_URL`) |
 
 ## Estructura
 
@@ -41,7 +41,8 @@ Abre `http://localhost:3000`. Usuarios demo tras el seed: `owner@demo.amable` / 
 - `packages/*` — UI, DB (Prisma), auth, jobs, créditos, facturación, conectores, etc.
 - `infra/compose` — Postgres, Redis, MinIO, MailHog
 - `infra/docker` — Dockerfiles de producción
-- `docs/` — Arquitectura, especificación, ejemplos API, runbook, checklist
+- `docs/runbook-production.md` — despliegue, salud, cron, variables
+- `docs/WHAT_YOU_NEED_FROM_ME.md` — checklist de lo que debe configurar el dueño del producto
 
 ## Licencia
 

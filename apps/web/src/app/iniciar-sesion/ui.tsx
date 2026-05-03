@@ -9,6 +9,7 @@ export default function IniciarSesionClient() {
   const router = useRouter();
   const search = useSearchParams();
   const next = search.get('next') ?? '/dashboard';
+  const resetOk = search.get('reset') === 'ok';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +68,7 @@ export default function IniciarSesionClient() {
               />
             </div>
             {error ? <p className="text-sm text-accent-2">{error}</p> : null}
+            {resetOk ? <p className="text-sm text-muted">Contraseña actualizada. Ya puedes entrar.</p> : null}
             <Button type="submit" className="w-full" disabled={loading}>
               Entrar
             </Button>
@@ -85,7 +87,9 @@ export default function IniciarSesionClient() {
               Crear cuenta
             </Link>
             {' · '}
-            <span className="text-muted">Recuperación de contraseña no disponible</span>
+            <Link className="text-accent-6 underline-offset-4 hover:underline" href="/recuperar-contrasena">
+              ¿Olvidaste la contraseña?
+            </Link>
           </p>
         </CardContent>
       </Card>
