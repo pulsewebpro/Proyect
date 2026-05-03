@@ -171,6 +171,10 @@ importers:
         version: 5.9.3
 
   packages/ai:
+    dependencies:
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
     devDependencies:
       '@amable/config':
         specifier: workspace:*

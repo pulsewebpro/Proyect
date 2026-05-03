@@ -2,36 +2,43 @@
 
 ## Vista general
 
-La aplicación separa el **plano de control** (usuarios, workspaces, proyectos, runs, facturación) del **runtime de proyectos generados** (archivos en Postgres, **bundle de preview/publicación con esbuild**, publicación en `/sitio/[slug]`).
+La aplicación separa el **plano de control** (usuarios, workspaces, proyectos, runs, facturación) del **runtime de apps generadas** (archivos en Postgres, `GeneratedRow`, `GeneratedAppUser`, API `/api/app/*`, preview/publicación **esbuild** o **Vite** si el proyecto declara `vite`).
 
-- **apps/web**: Next.js 15 con Route Handlers REST bajo `/api/v1`, autenticación por cookie JWT (`jose`), middleware de protección de rutas, SSE para estado de runs, y UI en español.
-- **apps/worker**: Worker BullMQ que procesa jobs `process` en la cola `runs` llamando a `@amable/jobs`.
-- **packages/db**: Prisma + PostgreSQL. Modelos para usuarios, workspaces, proyectos, archivos, runs, comentarios, publicaciones, analítica, etc.
-- **packages/jobs**: Orquestación de un run (modo Plan vs Construir) con stream simulado `@amable/ai` y aplicación de diffs a `ProjectFile` en modo Construir.
-- **packages/credits**: Ledger de créditos; el consumo usa transacción **Serializable** con **reintentos** ante `P2034`.
-- **packages/ui**: Tokens CSS, componentes Radix + Tailwind exportados desde `@amable/ui`.
-
-## Limitaciones de escalado (conocidas)
-
-- El endpoint SSE de runs **consulta la base de datos en bucle** (~500 ms) hasta terminar el run; es adecuado para demos, no para muchos clientes simultáneos sin sustituir por eventos push o canal dedicado.
+- **apps/web**: Next.js 15; `/api/v1/*`, `/api/app/*`, `/api/public/*`; JWT en cookies (`jose`); middleware en `/dashboard` y `/proyecto`.
+- **apps/worker**: BullMQ → `@amable/jobs` → `processRun`.
+- **packages/db**: Prisma; modelos clave: `ProjectProductSpec`, `GeneratedRow`, `GeneratedAppUser`, `ProjectIntegration`, `Publication.viteContentHash`.
+- **packages/jobs**: `processRun` + `createRunStream` (`@amable/ai`).
+- **packages/ai**: OpenAI/Anthropic, Zod, mock solo en local sin keys.
+- **packages/credits**: Serializable + reintentos `P2034`.
 
 ## Flujo de un run
 
-1. El cliente envía `POST /api/v1/projects/:id/runs` con `mode` y `prompt`.
-2. Se encola un job en Redis (`runs`) o, si Redis no está disponible, se dispara `processRun` en proceso (fallback dev).
-3. El worker o el fallback ejecuta pasos simulados, escribe mensajes y, en modo Construir, actualiza archivos.
-4. El cliente se suscribe a `GET .../runs/:runId/stream` (SSE) para ver progreso.
+1. `POST /api/v1/projects/:id/runs` encola o ejecuta `processRun`.
+2. `createRunStream`: keys → LLM; sin keys y no producción → mock; sin keys y producción → error.
+3. Plan → `ProjectProductSpec` + demo rows + integraciones mencionadas.
+4. Build → `ProjectFile` (files + diffs legacy).
+5. SSE: polling en `GET .../stream`.
 
-## Publicación y analítica
+## Preview y publicación
 
-- `POST /api/v1/projects/:id/publish` **compila** tras una **revisión heurística opcional** de `package.json` (`runSecurityCheck`); bloqueos devuelven **422** `revisión_paquete_fallida`. Luego esbuild; **422** `compilación_fallida` si falla. Si OK, upsert `Publication` + `DomainBinding` opcional.
-- `DELETE /api/v1/projects/:id/publish` despublica (limpia dominios, marca `unpublished`).
-- Vista previa autenticada: `GET /api/v1/projects/:id/preview-frame` (esbuild + React).
-- Sitio publicado: shell en `/sitio/[slug]` + `GET /api/public/sitio/:slug/frame` (mismo bundler).
-- Las visitas se registran con `POST /api/public/analytics` desde la shell publicada, persistiendo `AnalyticsEvent` (país `null`; dispositivo heurístico desde user-agent).
+- **Puerta opcional:** `runSecurityCheck` → `runPublishPackageJsonGate` (heurística `package.json`, no CVE).
+- **Vite** (si hay `vite` en `package.json` y no `AMABLE_SKIP_VITE`): build en temp, dist en `${TMPDIR}/amable-vite-store/:projectId/:hash`; `Publication.viteContentHash`.
+- **esbuild** si no Vite o con `AMABLE_SKIP_VITE=1`: bundle IIFE.
+- `GET /api/public/sitio/:slug/frame`: sirve Vite si hay hash persistido; si no, esbuild. Fallo de compilación → **503** texto plano (no HTML “éxito” con error).
+- Analítica: `POST /api/public/analytics` → `AnalyticsEvent` (país `null`).
+
+## API app generada
+
+- Contexto por header **Referer** (`/proyecto/:id` o `/sitio/:slug` con publicación `live`).
+- Cookie `amable_app_session` para usuarios de la app generada (mismo `AUTH_SECRET` que la plataforma; claims distintos de `amable_session`).
 
 ## Seguridad
 
-- JWT en cookie HttpOnly. El middleware solo importa `@amable/auth/session` para no arrastrar `bcryptjs` al Edge bundle.
-- En producción: rotar `AUTH_SECRET`, TLS en el proxy, y políticas de cookies `Secure`.
-- Antes de publicar (opcional): comprobación **heurística** de dependencias en `package.json` (no CVE/SAST). La compilación es la segunda barrera.
+- Cookies HttpOnly; `Secure` en producción.
+- Heurística pre-publicación: no sustituye SAST/CVE.
+- Secretos de integraciones en BD como JSON: **sin cifrado** en esta versión.
+
+## Limitaciones de escalado
+
+- SSE runs: polling DB ~500 ms.
+- Vite: `npm install` + build por publicación/preview puede ser costoso en CPU y tiempo.

@@ -240,6 +240,10 @@ model Project {
   securityFindings SecurityFinding[] @relation("ProjectSecurity")
   analyticsEvents AnalyticsEvent[]
   analyticsAggs   AnalyticsAggregate[]
+  productSpec     ProjectProductSpec?
+  generatedRows   GeneratedRow[]
+  appUsers        GeneratedAppUser[]
+  integrations    ProjectIntegration[]
 
   @@unique([workspaceId, slug])
   @@index([workspaceId])
@@ -338,6 +342,68 @@ model PlanDocument {
   run Run?
 }
 
+/// Structured product spec (pages, entities, auth, API) — JSON from LLM plan mode
+model ProjectProductSpec {
+  id        String   @id @default(cuid())
+  projectId String   @unique
+  specJson  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+/// Logical DB rows for generated CRUD (namespaced per project + entity)
+model GeneratedRow {
+  id        String   @id @default(cuid())
+  projectId String
+  entity    String
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, entity])
+}
+
+/// End-users of the generated published app (not Amable workspace users)
+model GeneratedAppUser {
+  id           String   @id @default(cuid())
+  projectId    String
+  email        String
+  passwordHash String
+  role         String   @default("user")
+  createdAt    DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, email])
+  @@index([projectId])
+}
+
+enum IntegrationType {
+  stripe
+  supabase
+  github
+}
+
+model ProjectIntegration {
+  id        String           @id @default(cuid())
+  projectId String
+  type      IntegrationType
+  enabled   Boolean          @default(false)
+  config    Json?
+  secrets   Json?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, type])
+  @@index([projectId])
+}
+
 model CommentThread {
   id          String   @id @default(cuid())
   projectId   String
@@ -388,6 +454,7 @@ model Publication {
   slug        String
   liveUrl     String?
   versionRef  String?
+  viteContentHash String?
   status      PublicationStatus   @default(draft)
   seoTitle    String?
   seoDescription String?

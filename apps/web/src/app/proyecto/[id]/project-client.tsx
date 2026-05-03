@@ -22,6 +22,8 @@ import {
   TooltipTrigger,
 } from '@amable/ui';
 import { GithubImportForm } from './github-import-form';
+import { GithubExportForm } from './github-export-form';
+import { IntegrationsPanel } from './integrations-panel';
 
 const Editor = dynamic(() => import('./monaco-editor'), { ssr: false });
 
@@ -53,6 +55,7 @@ export default function ProyectoPage() {
   >([]);
   const [commentBody, setCommentBody] = useState('');
   const [analytics, setAnalytics] = useState<Record<string, unknown> | null>(null);
+  const [specJson, setSpecJson] = useState<unknown>(null);
   const [pubOpen, setPubOpen] = useState(false);
   const [pubSlug, setPubSlug] = useState('');
   const [pubAudience, setPubAudience] = useState<'workspace' | 'anyone'>('anyone');
@@ -92,6 +95,12 @@ export default function ProyectoPage() {
     setThreads(data.threads ?? []);
   }, [projectId]);
 
+  const loadSpec = useCallback(async () => {
+    const res = await fetch(`/api/v1/projects/${projectId}/product-spec`);
+    const data = await res.json();
+    setSpecJson(data.spec ?? null);
+  }, [projectId]);
+
   const loadAnalytics = useCallback(async () => {
     const res = await fetch(`/api/v1/projects/${projectId}/analytics?range=7d`);
     const data = await res.json();
@@ -103,7 +112,8 @@ export default function ProyectoPage() {
     void loadFiles();
     void loadComments();
     void loadAnalytics();
-  }, [loadProject, loadFiles, loadComments, loadAnalytics]);
+    void loadSpec();
+  }, [loadProject, loadFiles, loadComments, loadAnalytics, loadSpec]);
 
   useEffect(() => {
     if (tab === 'analytics') void loadAnalytics();
@@ -125,10 +135,11 @@ export default function ProyectoPage() {
         es.close();
         void loadFiles();
         void loadProject();
+        void loadSpec();
       }
     };
     return () => es.close();
-  }, [runId, projectId, loadFiles, loadProject]);
+  }, [runId, projectId, loadFiles, loadProject, loadSpec]);
 
   async function startRun() {
     const res = await fetch(`/api/v1/projects/${projectId}/runs`, {
@@ -341,7 +352,8 @@ export default function ProyectoPage() {
                 <TabsTrigger value="prepublish">Antes de publicar</TabsTrigger>
                 <TabsTrigger value="analytics">Analítica</TabsTrigger>
                 <TabsTrigger value="comments">Comentarios</TabsTrigger>
-                <TabsTrigger value="share">Compartir</TabsTrigger>
+                <TabsTrigger value="spec">Product spec</TabsTrigger>
+                <TabsTrigger value="share">GitHub e integraciones</TabsTrigger>
               </TabsList>
             </div>
             <TabsContent value="preview" className="m-0 flex-1 p-0">
@@ -396,7 +408,9 @@ export default function ProyectoPage() {
                 de preview no puede satisfacer. No es un escáner CVE ni SAST.
               </p>
               <p>
-                La compilación con esbuild es la segunda puerta: si falla, la publicación se rechaza con detalle.
+                Si el proyecto usa <strong className="text-fg">Vite</strong>, la publicación valida el build de Vite;
+                si no, se valida el bundle con <strong className="text-fg">esbuild</strong>. Si falla, verás el error en
+                el diálogo de publicar.
               </p>
             </TabsContent>
             <TabsContent value="analytics" className="m-0 flex-1 p-4 text-sm">
@@ -468,17 +482,33 @@ export default function ProyectoPage() {
                 ))}
               </div>
             </TabsContent>
+            <TabsContent value="spec" className="m-0 flex-1 p-4 text-xs">
+              <pre className="max-h-[60vh] overflow-auto rounded-md border border-white/10 bg-panel p-3 text-muted">
+                {specJson ? JSON.stringify(specJson, null, 2) : 'Sin spec aún. Ejecuta un run en modo Plan.'}
+              </pre>
+            </TabsContent>
             <TabsContent value="share" className="m-0 flex-1 space-y-4 p-4 text-sm">
               <Card>
                 <CardContent className="space-y-3 p-4">
                   <div className="font-medium">Importar desde GitHub</div>
                   <p className="text-xs text-muted">
                     Repos públicos: sin token hasta que GitHub exija autenticación o límite de peticiones; entonces usa
-                    token en el formulario o <code className="text-fg">GITHUB_IMPORT_TOKEN</code>. No hay push ni sync
-                    automático: para llevar el código a GitHub usa <strong className="text-fg">ZIP</strong> y sube el
-                    contenido manualmente.
+                    token en el formulario o <code className="text-fg">GITHUB_IMPORT_TOKEN</code>. Para subir cambios
+                    al remoto también puedes usar <strong className="text-fg">export commit</strong> abajo o un{' '}
+                    <strong className="text-fg">ZIP</strong> manual.
                   </p>
                   <GithubImportForm projectId={projectId} onDone={() => void loadFiles()} />
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="space-y-3 p-4">
+                  <GithubExportForm projectId={projectId} />
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="space-y-3 p-4">
+                  <div className="font-medium">Integraciones</div>
+                  <IntegrationsPanel projectId={projectId} />
                 </CardContent>
               </Card>
             </TabsContent>

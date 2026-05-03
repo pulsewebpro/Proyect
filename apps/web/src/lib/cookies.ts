@@ -1,4 +1,5 @@
 const COOKIE = 'amable_session';
+export const APP_SESSION_COOKIE_NAME = 'amable_app_session';
 
 export function sessionCookieOptions() {
   const secure = process.env.NODE_ENV === 'production';

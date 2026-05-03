@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/session';
 import { prisma } from '@amable/db';
 import { bundleProjectFiles, previewShellHtml } from '@/server/preview-bundle';
+import { buildViteProjectIfApplicable, rewriteViteIndexHtml } from '@/server/vite-project-build';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -17,6 +18,17 @@ export async function GET(_req: Request, ctx: Ctx) {
     where: { projectId },
     select: { path: true, content: true },
   });
+  const vite = await buildViteProjectIfApplicable(projectId, rows);
+  if (vite.ok) {
+    const base = `/api/v1/projects/${projectId}/preview-vite/${vite.contentHash}/`;
+    const html = rewriteViteIndexHtml(vite.indexHtml, base);
+    return new NextResponse(html, {
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'X-Frame-Options': 'SAMEORIGIN',
+      },
+    });
+  }
   const { js, errors } = await bundleProjectFiles(rows);
   if (errors.length) {
     const errHtml = previewShellHtml(

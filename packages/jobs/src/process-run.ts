@@ -1,6 +1,6 @@
 import { prisma } from '@amable/db';
-import { RunMode, RunStatus } from '@prisma/client';
-import { mockRunStream } from '@amable/ai';
+import { RunMode, RunStatus, IntegrationType } from '@prisma/client';
+import { createRunStream, parsePlanMessageForSpec } from '@amable/ai';
 import { consumeCredits } from '@amable/credits';
 
 async function ensureFiles(projectId: string) {
@@ -32,6 +32,40 @@ function simpleHash(s: string): string {
   return `h${(h >>> 0).toString(16)}`;
 }
 
+function mapIntegrationId(s: string): IntegrationType | null {
+  const k = s.toLowerCase();
+  if (k === 'stripe') return IntegrationType.stripe;
+  if (k === 'supabase') return IntegrationType.supabase;
+  if (k === 'github') return IntegrationType.github;
+  return null;
+}
+
+async function syncIntegrationsFromSpec(projectId: string, integrations: string[]) {
+  for (const raw of integrations) {
+    const t = mapIntegrationId(raw);
+    if (!t) continue;
+    await prisma.projectIntegration.upsert({
+      where: { projectId_type: { projectId, type: t } },
+      create: { projectId, type: t, enabled: false },
+      update: {},
+    });
+  }
+}
+
+async function seedGeneratedRows(projectId: string, entities: { name: string }[]) {
+  for (const e of entities) {
+    const count = await prisma.generatedRow.count({ where: { projectId, entity: e.name } });
+    if (count > 0) continue;
+    await prisma.generatedRow.create({
+      data: {
+        projectId,
+        entity: e.name,
+        data: { _demo: true, note: 'Fila de ejemplo generada al construir el plan' },
+      },
+    });
+  }
+}
+
 export async function processRun(runId: string) {
   const run = await prisma.run.findUnique({
     where: { id: runId },
@@ -48,9 +82,17 @@ export async function processRun(runId: string) {
   const mode = run.mode === RunMode.plan ? 'plan' : 'build';
   let order = 0;
   let creditsUsed = 0;
+  let lastAssistant = '';
+
+  const specRow = await prisma.projectProductSpec.findUnique({ where: { projectId: run.projectId } });
+  const productSpecSummary = specRow ? JSON.stringify(specRow.specJson) : undefined;
 
   try {
-    for await (const ev of mockRunStream({ mode, prompt: run.prompt })) {
+    for await (const ev of createRunStream({
+      mode,
+      prompt: run.prompt,
+      productSpecSummary: mode === 'build' ? productSpecSummary : undefined,
+    })) {
       if (ev.type === 'step') {
         const existing = await prisma.runStep.findFirst({
           where: { runId, name: ev.name },
@@ -72,6 +114,7 @@ export async function processRun(runId: string) {
           });
         }
       } else if (ev.type === 'message') {
+        lastAssistant = ev.content;
         await prisma.chatMessage.create({
           data: { runId, role: ev.role, content: ev.content },
         });
@@ -107,6 +150,24 @@ export async function processRun(runId: string) {
             data: { diff: ev.patch },
           });
         }
+      } else if (ev.type === 'file' && mode === 'build') {
+        await ensureFiles(run.projectId);
+        const hash = simpleHash(ev.content);
+        await prisma.projectFile.upsert({
+          where: { projectId_path: { projectId: run.projectId, path: ev.path } },
+          create: {
+            projectId: run.projectId,
+            path: ev.path,
+            content: ev.content,
+            hash,
+            size: Buffer.byteLength(ev.content, 'utf8'),
+          },
+          update: {
+            content: ev.content,
+            hash,
+            size: Buffer.byteLength(ev.content, 'utf8'),
+          },
+        });
       } else if (ev.type === 'done') {
         creditsUsed = ev.creditsUsed;
       } else if (ev.type === 'error') {
@@ -115,10 +176,24 @@ export async function processRun(runId: string) {
     }
 
     if (mode === 'plan') {
+      const parsed = parsePlanMessageForSpec(lastAssistant);
+      const planBody =
+        parsed.success
+          ? JSON.stringify({ assistantMessage: parsed.data.assistantMessage, spec: parsed.data.spec })
+          : lastAssistant || `Plan generado para: ${run.prompt.slice(0, 200)}`;
+
+      if (parsed.success) {
+        await prisma.projectProductSpec.upsert({
+          where: { projectId: run.projectId },
+          create: { projectId: run.projectId, specJson: parsed.data.spec as object },
+          update: { specJson: parsed.data.spec as object },
+        });
+        await syncIntegrationsFromSpec(run.projectId, parsed.data.spec.integrations ?? []);
+        await seedGeneratedRows(run.projectId, parsed.data.spec.entities ?? []);
+      }
+
       const doc = await prisma.planDocument.create({
-        data: {
-          content: `Plan generado para: ${run.prompt.slice(0, 200)}`,
-        },
+        data: { content: planBody },
       });
       await prisma.run.update({
         where: { id: runId },

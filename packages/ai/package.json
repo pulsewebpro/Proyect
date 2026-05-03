@@ -9,7 +9,10 @@
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@amable/config": "workspace:*",
